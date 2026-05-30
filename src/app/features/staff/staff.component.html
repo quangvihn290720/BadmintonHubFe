@@ -1,0 +1,177 @@
+<div class="page">
+  @if (isAdmin()) {
+    <div class="page-header">
+      <div>
+        <h2 class="page-title">🔑 Quản lý tài khoản nhân viên</h2>
+        <p class="page-subtitle">Thêm, sửa, xóa tài khoản và phân quyền nhân viên vận hành</p>
+      </div>
+      <button class="btn btn-primary" (click)="openAddModal()">➕ Thêm nhân viên</button>
+    </div>
+
+    <!-- Search & Filter Controls -->
+    <div class="search-filter-row">
+      <div class="search-box-wrapper">
+        <span class="search-icon">🔍</span>
+        <input type="text" class="search-input" placeholder="Tìm kiếm theo tên, tên đăng nhập..." [value]="searchQuery()" (input)="onSearch($event)">
+      </div>
+      <div class="filter-controls-group">
+        <div class="select-group">
+          <label class="control-label">Vai trò:</label>
+          <select class="select-dropdown" [value]="roleFilter()" (change)="onRoleFilterChange($event)">
+            <option value="all">Tất cả</option>
+            <option value="admin">Quản trị viên</option>
+            <option value="staff">Nhân viên</option>
+          </select>
+        </div>
+        <div class="select-group">
+          <label class="control-label">Hiển thị:</label>
+          <select class="select-dropdown" (change)="onPageSizeChange($event)">
+            <option [value]="5" [selected]="pageSize() === 5">5 dòng</option>
+            <option [value]="10" [selected]="pageSize() === 10">10 dòng</option>
+            <option [value]="20" [selected]="pageSize() === 20">20 dòng</option>
+            <option [value]="50" [selected]="pageSize() === 50">50 dòng</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="staff-layout">
+      <!-- Staff List Table -->
+      <div class="table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Họ và tên</th>
+              <th>Tên đăng nhập</th>
+              <th>Vai trò</th>
+              <th>Hành động</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (s of paginatedStaff(); track s.id) {
+              <tr>
+                <td>#{{ s.id }}</td>
+                <td><strong>{{ s.name }}</strong></td>
+                <td><code class="username-code">{{ s.username }}</code></td>
+                <td>
+                  <span class="role-badge" [class.badge-admin]="s.role === 'admin'" [class.badge-staff]="s.role === 'staff'">
+                    {{ s.role === 'admin' ? '🛡️ Quản trị' : '👤 Nhân viên' }}
+                  </span>
+                </td>
+                <td>
+                  <div class="action-buttons">
+                    <button class="btn-icon btn-detail" (click)="openViewModal(s)">👁️ Chi tiết</button>
+                    <button class="btn-icon btn-edit" (click)="openEditModal(s)">✏️ Sửa</button>
+                    @if (s.username !== 'admin') {
+                      <button class="btn-icon btn-delete" (click)="deleteStaff(s.id)">🗑️ Xóa</button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="5" class="empty-text">
+                  <span class="empty-icon">📭</span>
+                  Không tìm thấy tài khoản nhân viên nào phù hợp.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+
+        <!-- Pagination controls -->
+        <div class="pagination-container">
+          <button class="btn btn-secondary" [disabled]="currentPage() === 1" (click)="prevPage()">← Trước</button>
+          <span class="page-info">Trang <strong>{{ currentPage() }}</strong> / {{ totalPages() }}</span>
+          <button class="btn btn-secondary" [disabled]="currentPage() === totalPages()" (click)="nextPage()">Sau →</button>
+        </div>
+      </div>
+
+      <!-- Add/Edit Staff Modal overlay -->
+      @if (showModal()) {
+        <div class="modal-overlay" (click)="showModal.set(false)">
+          <div class="modal-card" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+              <h3>{{ isEdit() ? '✏️ Chỉnh sửa nhân viên' : '➕ Thêm nhân viên mới' }}</h3>
+              <button class="close-btn" (click)="showModal.set(false)">✕</button>
+            </div>
+            <form [formGroup]="staffForm" (ngSubmit)="onSubmit()">
+              <div class="modal-body">
+                <div class="form-group">
+                  <label class="form-label">Họ và tên <span class="required">*</span></label>
+                  <input type="text" formControlName="name" class="form-input" placeholder="Nhập họ và tên">
+                  @if (showError('name')) { <span class="field-error">Vui lòng nhập họ tên</span> }
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Tên đăng nhập <span class="required">*</span></label>
+                  <input type="text" formControlName="username" class="form-input" placeholder="Nhập tên đăng nhập">
+                  @if (showError('username')) { <span class="field-error">Vui lòng nhập tên đăng nhập</span> }
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Mật khẩu <span class="required">*</span></label>
+                  <input type="password" formControlName="password" class="form-input" placeholder="Nhập mật khẩu">
+                  @if (showError('password')) { <span class="field-error">Vui lòng nhập mật khẩu</span> }
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Vai trò <span class="required">*</span></label>
+                  <select formControlName="role" class="form-input">
+                    <option value="staff">Nhân viên</option>
+                    <option value="admin">Quản trị viên</option>
+                  </select>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" (click)="showModal.set(false)">Hủy</button>
+                <button type="submit" class="btn btn-primary">Lưu</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      }
+
+      <!-- Staff Details Modal -->
+      @if (showDetailsModal() && selectedStaff(); as member) {
+        <div class="modal-overlay" (click)="showDetailsModal.set(false)">
+          <div class="modal-card staff-modal-card" style="max-width: 480px;" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+              <h3>👤 Chi tiết tài khoản nhân viên</h3>
+              <button class="close-btn" (click)="showDetailsModal.set(false)">✕</button>
+            </div>
+            <div class="modal-body">
+              <div class="staff-profile-card">
+                <div class="avatar-circle">
+                  {{ member.name.charAt(0) }}
+                </div>
+                <div class="staff-profile-meta">
+                  <h4>{{ member.name }}</h4>
+                  <span class="role-badge" [class.badge-admin]="member.role === 'admin'" [class.badge-staff]="member.role === 'staff'">
+                    {{ member.role === 'admin' ? '🛡️ Quản trị viên' : '👤 Nhân viên' }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="info-sheet" style="margin-top: 8px;">
+                <div class="info-row"><span>ID nhân viên:</span><strong>#{{ member.id }}</strong></div>
+                <div class="info-row"><span>Họ và tên:</span><strong>{{ member.name }}</strong></div>
+                <div class="info-row"><span>Tên đăng nhập:</span><strong>{{ member.username }}</strong></div>
+                <div class="info-row"><span>Mật khẩu:</span><strong>{{ member.password || '••••••••' }}</strong></div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-secondary" (click)="showDetailsModal.set(false)">Đóng</button>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  } @else {
+    <div class="access-denied-container">
+      <div class="access-denied-card">
+        <span class="lock-icon">🔒</span>
+        <h3>Quyền truy cập bị hạn chế</h3>
+        <p>Tài khoản nhân viên không có quyền quản lý danh sách nhân viên khác. Chỉ tài khoản Quản trị viên (Admin) mới có quyền truy cập chức năng này.</p>
+      </div>
+    </div>
+  }
+</div>

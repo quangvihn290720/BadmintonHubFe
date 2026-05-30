@@ -1,0 +1,378 @@
+<div class="dashboard">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div>
+      <h2 class="page-title">📅 Lịch đặt sân & Vận hành</h2>
+      <p class="page-subtitle">Quản lý đặt sân, check-in, check-out và phụ phí dịch vụ</p>
+    </div>
+    <div class="header-right-controls">
+      <!-- Date Picker -->
+      <div class="picker-group">
+        <label class="control-label">Ngày xem</label>
+        <input type="date" class="date-picker" [value]="selectedDate()" (change)="onDateChange($event)">
+      </div>
+      <!-- Time Simulator -->
+      <div class="picker-group clock-sim-card">
+        <div class="clock-sim-header">
+          <label class="control-label">🕒 Đồng hồ giả định</label>
+          <span class="simulated-time">{{ simulatedTime() }}</span>
+        </div>
+        <input type="range" class="time-slider" min="360" max="1320" step="15" [value]="simulatedMinutes()"
+          (input)="onTimeSliderChange($event)">
+        <span class="slider-tip">Kéo để giả định giờ (Tính overtime khi checkout)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Grid -->
+  <div class="stats-grid">
+    <app-stat-card icon="🟢" label="Sân trống hiện tại" [value]="stats().available.toString()"
+      color="#16A34A"></app-stat-card>
+    <app-stat-card icon="📋" label="Đặt sân chờ Check-in" [value]="stats().deposited.toString()"
+      color="#2563EB"></app-stat-card>
+    <app-stat-card icon="🏸" label="Sân đang chơi" [value]="stats().playing.toString()" color="#F59E0B"></app-stat-card>
+    <app-stat-card icon="💰" label="Thu nhập hôm nay" [value]="formatCurrency(stats().revenue)"
+      color="#8B5CF6"></app-stat-card>
+  </div>
+
+  <!-- Grid Legend -->
+  <div class="legend">
+    <div class="legend-item"><span class="legend-dot dot-available"></span> Trống</div>
+    <div class="legend-item"><span class="legend-dot dot-deposited"></span> Đã cọc (Click để check-in)</div>
+    <div class="legend-item"><span class="legend-dot dot-playing"></span> Đang chơi (Click để tính tiền)</div>
+    <div class="legend-item"><span class="legend-dot dot-completed"></span> Hoàn thành</div>
+  </div>
+
+  <!-- Schedule Table -->
+  <div class="schedule-card">
+    <!-- Combined Header with Quick Date Switcher Strip -->
+    <div class="schedule-calendar-header">
+      <div class="header-left">
+        <h3>📅 Lịch sân ngày {{ formatDateDisplay(selectedDate()) }}</h3>
+      </div>
+      <div class="date-strip-container">
+        <button class="nav-week-btn" (click)="prevWeek()">◀</button>
+        <button class="today-btn" (click)="jumpToToday()">Hôm nay</button>
+        <div class="date-chips-scroll">
+          @for (tab of dateTabs(); track tab.dateStr) {
+            <div class="date-chip" 
+                 [class.active]="selectedDate() === tab.dateStr"
+                 [class.is-today]="tab.isToday"
+                 (click)="selectQuickDate(tab.dateStr)">
+              <span class="chip-day-label">{{ tab.dayLabel }}</span>
+              <span class="chip-day-num">{{ tab.dayNum }}/{{ tab.monthNum }}</span>
+            </div>
+          }
+        </div>
+        <button class="nav-week-btn" (click)="nextWeek()">▶</button>
+      </div>
+    </div>
+
+    <div class="schedule-grid-wrapper">
+      <div class="calendar-scheduler">
+
+        <!-- Y-Axis Timeline Column -->
+        <div class="timeline-column">
+          <div class="timeline-corner-cell">Giờ / Sân</div>
+          @for (hour of hourLabels; track hour) {
+          <div class="timeline-hour-cell" [style.height.px]="hourHeight">
+            <span class="hour-text">{{ hour }}</span>
+          </div>
+          }
+        </div>
+
+        <!-- Courts Grid Columns -->
+        <div class="courts-grid">
+          @for (court of courts; track court.id) {
+          <div class="court-grid-column">
+            <!-- Column Header (sticky at the top) -->
+            <div class="court-column-header">
+              <span class="court-name">{{ court.name }}</span>
+              <span class="court-type" [class.vip-type]="court.type === 'vip'">
+                {{ court.type === 'vip' ? '⭐ VIP' : 'Standard' }}
+              </span>
+            </div>
+
+            <!-- Column Body (relative container for hour slots and absolute cards) -->
+            <div class="court-column-body" [style.height.px]="hourLabels.length * hourHeight">
+
+              <!-- Red Current Time Indicator Line (only if today and within grid range) -->
+              @if (isToday() && isTimeWithinGrid()) {
+              <div class="current-time-line" [style.top.px]="getCurrentTimeOffset()"></div>
+              }
+
+              <!-- Absolute Positioned Past-time Blur Overlay -->
+              @if (isToday() && isTimeWithinGrid()) {
+              <div class="past-time-overlay" [style.height.px]="getCurrentTimeOffset()"></div>
+              } @else if (isPastDay()) {
+              <div class="past-time-overlay" [style.height.px]="hourLabels.length * hourHeight"></div>
+              }
+
+              <!-- Background grid lines (interactive hour cells) -->
+              @for (hour of hourLabels; track hour) {
+              <div class="grid-hour-cell" [class.cell-past]="isPastHour(hour)" [style.height.px]="hourHeight"
+                (click)="onGridCellClick(court, hour)">
+                @if (!isPastHour(hour)) {
+                <span class="cell-hover-action">+ Đặt sân {{ hour }}</span>
+                }
+              </div>
+              }
+
+              <!-- Absolute positioned booking cards -->
+              @for (booking of getBookingsForCourt(court.id); track booking.id) {
+              <div class="booking-card" [class.card-deposited]="booking.status === 'deposited'"
+                [class.card-playing]="booking.status === 'playing'"
+                [class.card-completed]="booking.status === 'completed'" [style.top.px]="getBookingTop(booking)"
+                [style.height.px]="getBookingHeight(booking)" (click)="onBookingCardClick(booking, $event)">
+                <div class="booking-card-content">
+                  <span class="booking-cust-name">{{ booking.customerName }}</span>
+                  <span class="booking-cust-time">🕒 {{ booking.startTime }} - {{ booking.endTime }}</span>
+                  <span class="booking-cust-phone">📞 {{ booking.customerPhone }}</span>
+                  @if (booking.note) {
+                  <span class="booking-cust-note" [title]="booking.note">📝 {{ booking.note }}</span>
+                  }
+                </div>
+              </div>
+              }
+            </div>
+          </div>
+          }
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Check-In Action Modal -->
+  @if (showCheckInModal() && activeBooking()) {
+  @let booking = activeBooking()!;
+  <div class="modal-overlay" (click)="showCheckInModal.set(false)">
+    <div class="modal-card select-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>⚡ Nhận sân (Check-in)</h3>
+        <button class="close-btn" (click)="showCheckInModal.set(false)">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="detail-badge">Mã đặt sân: {{ booking.code }}</div>
+        <div class="info-sheet">
+          <div class="info-row"><span>Khách hàng:</span><strong>{{ booking.customerName }}</strong></div>
+          <div class="info-row"><span>Số điện thoại:</span><strong>{{ booking.customerPhone }}</strong></div>
+          <div class="info-row"><span>Sân đặt:</span><strong>{{ booking.courtName }}</strong></div>
+          <div class="info-row"><span>Thời gian đăng ký:</span><strong>{{ booking.startTime }} - {{ booking.endTime
+              }}</strong></div>
+          <div class="info-row"><span>Tiền cọc đã đóng:</span><strong class="text-success">{{
+              formatCurrency(booking.deposit) }}</strong></div>
+        </div>
+        @if (!canCheckIn(booking)) {
+          <div class="checkin-warning-alert" style="background: rgba(220, 38, 38, 0.06); border: 1px solid rgba(220, 38, 38, 0.15); color: var(--color-error); border-radius: 10px; padding: 12px; font-size: 13px; margin-top: 12px; line-height: 1.5;">
+            <strong>⚠️ Không thể nhận sân lúc này:</strong> Chỉ cho phép check-in vào đúng ngày đặt sân và trước giờ chơi tối đa 15 phút.
+          </div>
+        } @else {
+          <p class="modal-desc">Khách hàng đã đến đúng giờ. Xác nhận chuyển trạng thái sang <strong>Đang chơi</strong>?</p>
+        }
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="showCheckInModal.set(false)">Hủy</button>
+        <button class="btn btn-primary" [disabled]="!canCheckIn(booking)" (click)="confirmCheckIn()">🏸 Nhận sân & Bắt đầu chơi</button>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- Quick Checkout & Service Billing Modal -->
+  @if (showCheckoutModal() && activeBooking()) {
+  @let booking = activeBooking()!;
+  <div class="modal-overlay" (click)="showCheckoutModal.set(false)">
+    <div class="modal-card checkout-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>💳 Tính tiền & Trả sân (Check-out)</h3>
+        <button class="close-btn" (click)="showCheckoutModal.set(false)">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="checkout-grid">
+          <!-- Left: Booking Info & Overtime -->
+          <div class="checkout-panel">
+            <h4 class="panel-section-title">🏸 Thông tin phiên chơi</h4>
+            <div class="info-sheet">
+              <div class="info-row"><span>Khách hàng:</span><strong>{{ booking.customerName }}</strong></div>
+              <div class="info-row"><span>Sân:</span><strong>{{ booking.courtName }}</strong></div>
+              <div class="info-row"><span>Giờ đã đặt:</span><strong>{{ booking.startTime }} - {{ booking.endTime
+                  }}</strong></div>
+              <div class="info-row"><span>Giờ trả thực tế:</span><strong class="text-primary">{{ simulatedTime()
+                  }}</strong></div>
+            </div>
+
+            <!-- Overtime computation banner -->
+            @if (checkoutCalc().overtimeMinutes > 0) {
+            <div class="overtime-banner">
+              <span class="warning-icon">⚠️</span>
+              <div class="overtime-details">
+                <strong>Quá giờ chơi: +{{ checkoutCalc().overtimeMinutes }} phút</strong>
+                <p>Đơn giá phạt quá giờ: {{ formatCurrency(booking.courtName.includes('VIP') ? 180000 : 100000) }}/giờ
+                </p>
+                <span class="overtime-fee">+ {{ formatCurrency(checkoutCalc().overtimeAmount) }}</span>
+              </div>
+            </div>
+            } @else {
+            <div class="overtime-banner on-time">
+              <span class="check-icon">✅</span>
+              <div><strong>Trả sân đúng giờ</strong>
+                <p>Không có phụ thu thời gian quá hạn.</p>
+              </div>
+            </div>
+            }
+          </div>
+
+          <!-- Right: Additional Services Checklist -->
+          <div class="checkout-panel">
+            <h4 class="panel-section-title">🥤 Dịch vụ mua thêm tại sân</h4>
+            <div class="services-list">
+              @for (item of serviceItems(); track item.key) {
+              <div class="service-item-row">
+                <div class="service-label">
+                  <span class="item-name">{{ item.name }}</span>
+                  <span class="item-price">{{ formatCurrency(item.price) }}</span>
+                </div>
+                <div class="quantity-selector">
+                  <button class="qty-btn" type="button" (click)="adjustServiceQty(item.key, -1)">-</button>
+                  <span class="qty-val">{{ item.quantity }}</span>
+                  <button class="qty-btn" type="button" (click)="adjustServiceQty(item.key, 1)">+</button>
+                </div>
+              </div>
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- Bill Tally Card -->
+        <div class="bill-tally-card">
+          <h4 class="bill-title">🧾 HÓA ĐƠN CHI TIẾT</h4>
+          <div class="bill-rows">
+            <div class="bill-row"><span>Phí sân gốc:</span><span>{{ formatCurrency(booking.totalAmount) }}</span></div>
+            @if (checkoutCalc().overtimeAmount > 0) {
+            <div class="bill-row text-error"><span>Phụ phí quá giờ:</span><span>+{{
+                formatCurrency(checkoutCalc().overtimeAmount) }}</span></div>
+            }
+            @if (servicesTotal() > 0) {
+            <div class="bill-row text-warning"><span>Phí dịch vụ phụ trợ:</span><span>+{{
+                formatCurrency(servicesTotal()) }}</span></div>
+            }
+            <div class="bill-row bill-grand-total"><span>TỔNG CỘNG:</span><span>{{ formatCurrency(totalBill()) }}</span>
+            </div>
+            <div class="bill-row text-success"><span>Đã trừ tiền cọc trước đó:</span><span>-{{
+                formatCurrency(booking.deposit) }}</span></div>
+            <div class="bill-row bill-balance-due">
+              <span>CẦN THANH TOÁN THÊM:</span>
+              <span>{{ formatCurrency(balanceDue()) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment Method selection -->
+        <div class="payment-methods-sec">
+          <label class="form-label">Phương thức thanh toán khoản còn lại:</label>
+          <div class="payment-radios">
+            <label class="radio-label" [class.selected]="checkoutPaymentMethod() === 'cash'">
+              <input type="radio" name="checkoutPM" value="cash" [checked]="checkoutPaymentMethod() === 'cash'"
+                (change)="setPaymentMethod('cash')"> Tiền mặt
+            </label>
+            <label class="radio-label" [class.selected]="checkoutPaymentMethod() === 'bank_transfer'">
+              <input type="radio" name="checkoutPM" value="bank_transfer"
+                [checked]="checkoutPaymentMethod() === 'bank_transfer'" (change)="setPaymentMethod('bank_transfer')">
+              Chuyển khoản
+            </label>
+            <label class="radio-label" [class.selected]="checkoutPaymentMethod() === 'momo_qr'">
+              <input type="radio" name="checkoutPM" value="momo_qr" [checked]="checkoutPaymentMethod() === 'momo_qr'"
+                (change)="setPaymentMethod('momo_qr')"> MOMO / QR
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="showCheckoutModal.set(false)">Đóng</button>
+        <button class="btn btn-success checkout-btn" (click)="confirmCheckout()">💳 Hoàn tất thanh toán & Trả
+          sân</button>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- Completed Booking Detail Modal -->
+  @if (showDetailModal() && activeBooking()) {
+  @let booking = activeBooking()!;
+  <div class="modal-overlay" (click)="showDetailModal.set(false)">
+    <div class="modal-card select-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>📄 Chi tiết lịch sử phiên chơi</h3>
+        <button class="close-btn" (click)="showDetailModal.set(false)">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="detail-badge text-success">✓ Hoàn thành · Mã: {{ booking.code }}</div>
+
+        <div class="info-sheet" style="margin-top: 8px;">
+          <div class="info-row"><span>Khách hàng:</span><strong>{{ booking.customerName }}</strong></div>
+          <div class="info-row"><span>Số điện thoại:</span><strong>{{ booking.customerPhone }}</strong></div>
+          <div class="info-row"><span>Sân:</span><strong>{{ booking.courtName }}</strong></div>
+          <div class="info-row"><span>Ngày chơi:</span><strong>{{ booking.date }}</strong></div>
+          <div class="info-row"><span>Khung giờ:</span><strong>{{ booking.startTime }} - {{ booking.endTime }}</strong>
+          </div>
+        </div>
+
+        <div class="bill-tally-card" style="background: #1e293b; margin-top: 8px;">
+          <h4 class="bill-title" style="color: #cbd5e1; border-bottom: 1px dashed #475569;">🧾 CHI TIẾT THANH TOÁN</h4>
+          <div class="bill-rows">
+            <div class="bill-row"><span>Tiền sân gốc:</span><span>{{ formatCurrency(booking.totalAmount) }}</span></div>
+
+            @if (booking.overtimeMinutes && booking.overtimeMinutes > 0) {
+            <div class="bill-row text-error">
+              <span>Phụ phí quá giờ (+{{ booking.overtimeMinutes }}p):</span>
+              <span>+{{ formatCurrency(booking.overtimeAmount || 0) }}</span>
+            </div>
+            }
+
+            @if (booking.additionalServices && booking.additionalServices.length > 0) {
+            <div class="bill-row text-warning">
+              <span>Phí dịch vụ phụ trợ:</span>
+              <span>+{{ formatCurrency(getServicesTotal(booking)) }}</span>
+            </div>
+            @for (srv of booking.additionalServices; track srv.name) {
+            <div
+              style="font-size: 11px; color: #94a3b8; display: flex; justify-content: space-between; padding-left: 12px;">
+              <span>- {{ srv.name }} (x{{ srv.quantity }}):</span>
+              <span>{{ formatCurrency(srv.price * srv.quantity) }}</span>
+            </div>
+            }
+            }
+
+            <div class="bill-row bill-grand-total" style="border-top: 1px solid #475569; padding-top: 8px;">
+              <span>TỔNG DOANH THU:</span>
+              <span>{{ formatCurrency(getGrandTotal(booking)) }}</span>
+            </div>
+
+            <div class="bill-row text-success"><span>Đã cọc ({{ getPaymentMethodLabel(booking.paymentMethod)
+                }}):</span><span>-{{ formatCurrency(booking.deposit) }}</span></div>
+            <div class="bill-row text-warning"
+              style="border-top: 1px dashed #475569; padding-top: 8px; font-size: 15px; font-weight: 700;">
+              <span>ĐÃ THANH TOÁN THÊM:</span>
+              <span>{{ formatCurrency(booking.checkoutAmount || 0) }}</span>
+            </div>
+            <div class="bill-row" style="font-size: 11px; color: #94a3b8; padding-top: 4px;">
+              <span>Phương thức thanh toán thêm:</span>
+              <span>{{ getPaymentMethodLabel(booking.checkoutPaymentMethod) }}</span>
+            </div>
+            @if (booking.checkoutTime) {
+            <div class="bill-row" style="font-size: 11px; color: #94a3b8;">
+              <span>Thời gian checkout:</span>
+              <span>{{ booking.checkoutTime }}</span>
+            </div>
+            }
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="showDetailModal.set(false)">Đóng</button>
+      </div>
+    </div>
+  </div>
+  }
+</div>

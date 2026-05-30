@@ -1,0 +1,188 @@
+<div class="page">
+  <div class="page-header">
+    <h2 class="page-title">💳 Thanh toán & Quản lý giao dịch</h2>
+    <p class="page-subtitle">Quản lý hóa đơn phiên chơi đang hoạt động và theo dõi giao dịch khách hàng</p>
+  </div>
+
+  <div class="stats-row">
+    <div class="mini-stat">
+      <span class="mini-label">Chờ thu (Tiền cọc / Còn lại)</span>
+      <span class="mini-value text-warning">{{ pendingCount() }} hóa đơn</span>
+    </div>
+    <div class="mini-stat">
+      <span class="mini-label">Đã thanh toán hoàn tất</span>
+      <span class="mini-value text-success">{{ paidCount() }} hóa đơn</span>
+    </div>
+    <div class="mini-stat">
+      <span class="mini-label">Tổng thực thu hôm nay</span>
+      <span class="mini-value text-primary">{{ totalRevenue() }}</span>
+    </div>
+  </div>
+
+  <!-- Search & Advanced Filters -->
+  <div class="search-filter-row">
+    <div class="search-box-wrapper">
+      <span class="search-icon">🔍</span>
+      <input type="text" class="search-input" placeholder="Tìm kiếm theo mã booking, tên khách, sân..."
+        [value]="searchQuery()" (input)="onSearch($event)">
+    </div>
+    <div class="filter-controls-group">
+      <div class="select-group">
+        <label class="control-label">Trạng thái:</label>
+        <select class="select-dropdown" [value]="statusFilter()" (change)="onStatusFilterChange($event)">
+          <option value="all">Tất cả hóa đơn</option>
+          <option value="partial">Một phần (Đã cọc)</option>
+          <option value="pending">Chờ thanh toán</option>
+        </select>
+      </div>
+      <div class="select-group">
+        <label class="control-label">Hiển thị:</label>
+        <select class="select-dropdown" (change)="onPageSizeChange($event)">
+          <option [value]="10" [selected]="pageSize() === 10">10 dòng</option>
+          <option [value]="20" [selected]="pageSize() === 20">20 dòng</option>
+          <option [value]="50" [selected]="pageSize() === 50">50 dòng</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-card">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Mã booking</th>
+          <th>Khách hàng</th>
+          <th>Sân</th>
+          <th>Tổng tiền</th>
+          <th>Đã cọc</th>
+          <th>Còn lại</th>
+          <th>Trạng thái</th>
+          <th>Phương thức</th>
+          <th>Hành động</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (p of paginatedPayments(); track p.id) {
+        <tr class="clickable-row" (click)="openDetails(p.id)">
+          <td><span class="code">{{ p.bookingCode }}</span></td>
+          <td>{{ p.customerName }}</td>
+          <td>{{ p.courtName }}</td>
+          <td>{{ formatCurrency(p.totalAmount) }}</td>
+          <td>{{ formatCurrency(p.deposit) }}</td>
+          <td><strong>{{ formatCurrency(p.remaining) }}</strong></td>
+          <td><app-status-badge [status]="p.status" [label]="getStatusLabel(p.status)"></app-status-badge></td>
+          <td>{{ p.paymentMethod }}</td>
+          <td><button class="btn-icon btn-detail" (click)="$event.stopPropagation(); openDetails(p.id)">✏️ Chi
+              tiết</button></td>
+        </tr>
+        } @empty {
+        <tr>
+          <td colspan="9" class="empty-text">
+            <span class="empty-icon">📭</span>
+            Không tìm thấy giao dịch thanh toán nào phù hợp.
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+
+    <!-- Pagination controls -->
+    <div class="pagination-container">
+      <button class="btn btn-secondary" [disabled]="currentPage() === 1" (click)="prevPage()">← Trước</button>
+      <span class="page-info">Trang <strong>{{ currentPage() }}</strong> / {{ totalPages() }}</span>
+      <button class="btn btn-secondary" [disabled]="currentPage() === totalPages()" (click)="nextPage()">Sau →</button>
+    </div>
+  </div>
+
+  <!-- Payment Details Modal Overlay -->
+  @if (showDetailModal() && activeBooking()) {
+  @let booking = activeBooking()!;
+  <div class="modal-overlay" (click)="showDetailModal.set(false)">
+    <div class="modal-card select-modal" style="max-width: 480px;" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>📄 Chi tiết thanh toán hóa đơn</h3>
+        <button class="close-btn" (click)="showDetailModal.set(false)">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="detail-badge" [class.text-success]="booking.status === 'completed'"
+          [class.text-warning]="booking.status !== 'completed'">
+          {{ booking.status === 'completed' ? '✓ Đã thanh toán hoàn tất' : '⏱ Chờ thu / Đã đặt cọc' }}
+        </div>
+
+        <div class="info-sheet" style="margin-top: 8px;">
+          <div class="info-row"><span>Mã đặt sân:</span><strong>{{ booking.code }}</strong></div>
+          <div class="info-row"><span>Khách hàng:</span><strong>{{ booking.customerName }}</strong></div>
+          <div class="info-row"><span>Số điện thoại:</span><strong>{{ booking.customerPhone }}</strong></div>
+          <div class="info-row"><span>Sân chơi:</span><strong>{{ booking.courtName }}</strong></div>
+          <div class="info-row"><span>Khung giờ:</span><strong>{{ booking.startTime }} - {{ booking.endTime }}</strong>
+          </div>
+          <div class="info-row"><span>Ngày đặt sân:</span><strong>{{ booking.date }}</strong></div>
+        </div>
+
+        <div class="bill-tally-card" style="background: #1e293b; margin-top: 8px;">
+          <h4 class="bill-title" style="color: #cbd5e1; border-bottom: 1px dashed #475569;">🧾 HÓA ĐƠN CHI TIẾT</h4>
+          <div class="bill-rows">
+            <div class="bill-row"><span>Tiền sân gốc:</span><span>{{ formatCurrency(booking.totalAmount) }}</span></div>
+
+            @if (booking.overtimeMinutes && booking.overtimeMinutes > 0) {
+            <div class="bill-row text-error">
+              <span>Phụ phí quá giờ (+{{ booking.overtimeMinutes }}p):</span>
+              <span>+{{ formatCurrency(booking.overtimeAmount || 0) }}</span>
+            </div>
+            }
+
+            @if (booking.additionalServices && booking.additionalServices.length > 0) {
+            <div class="bill-row text-warning">
+              <span>Phí dịch vụ phụ trợ:</span>
+              <span>+{{ formatCurrency(getServicesTotal(booking)) }}</span>
+            </div>
+            @for (srv of booking.additionalServices; track srv.name) {
+            <div
+              style="font-size: 11px; color: #94a3b8; display: flex; justify-content: space-between; padding-left: 12px;">
+              <span>- {{ srv.name }} (x{{ srv.quantity }}):</span>
+              <span>{{ formatCurrency(srv.price * srv.quantity) }}</span>
+            </div>
+            }
+            }
+
+            <div class="bill-row bill-grand-total" style="border-top: 1px solid #475569; padding-top: 8px;">
+              <span>TỔNG CỘNG HÓA ĐƠN:</span>
+              <span>{{ formatCurrency(getGrandTotal(booking)) }}</span>
+            </div>
+
+            <div class="bill-row text-success"><span>Đã cọc trước đó ({{ getPaymentMethodLabel(booking.paymentMethod)
+                }}):</span><span>-{{ formatCurrency(booking.deposit) }}</span></div>
+
+            @if (booking.status === 'completed') {
+            <div class="bill-row text-warning"
+              style="border-top: 1px dashed #475569; padding-top: 8px; font-size: 15px; font-weight: 700;">
+              <span>ĐÃ THANH TOÁN THÊM:</span>
+              <span>{{ formatCurrency(booking.checkoutAmount || 0) }}</span>
+            </div>
+            <div class="bill-row" style="font-size: 11px; color: #94a3b8; padding-top: 4px;">
+              <span>Phương thức thanh toán thêm:</span>
+              <span>{{ getPaymentMethodLabel(booking.checkoutPaymentMethod) }}</span>
+            </div>
+            @if (booking.checkoutTime) {
+            <div class="bill-row" style="font-size: 11px; color: #94a3b8;">
+              <span>Thời gian checkout:</span>
+              <span>{{ booking.checkoutTime }}</span>
+            </div>
+            }
+            } @else {
+            <div class="bill-row text-warning"
+              style="border-top: 1px dashed #475569; padding-top: 8px; font-size: 15px; font-weight: 700;">
+              <span>SỐ TIỀN CẦN THU THÊM:</span>
+              <span>{{ formatCurrency(getGrandTotal(booking) - booking.deposit) }}</span>
+            </div>
+            }
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="showDetailModal.set(false)">Đóng</button>
+      </div>
+    </div>
+  </div>
+  }
+</div>

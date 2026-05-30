@@ -1,0 +1,145 @@
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h2 class="page-title">💰 Quản lý cấu hình bảng giá</h2>
+      <p class="page-subtitle">Cấu hình đơn giá giờ thường, giờ cao điểm, phụ thu và tỷ lệ chiết khấu</p>
+    </div>
+  </div>
+
+  <div class="pricing-grid">
+    <!-- Standard pricing -->
+    <div class="pricing-section">
+      <h3 class="section-title">🏸 Cấu hình Sân Standard</h3>
+      <div class="table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Khung giờ</th>
+              <th>Thời gian</th>
+              <th>Giá/giờ</th>
+              <th>Phụ thu</th>
+              <th>Cao điểm</th>
+              <th>Chiết khấu</th>
+              @if (isAdmin()) {
+                <th>Hành động</th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (rule of standardRules(); track rule.id) {
+              <tr>
+                <td><strong>{{ rule.label }}</strong></td>
+                <td>{{ rule.timeStart }} - {{ rule.timeEnd }}</td>
+                <td class="price">{{ formatCurrency(rule.pricePerHour) }}</td>
+                <td>{{ rule.peakSurcharge > 0 ? formatCurrency(rule.peakSurcharge) : '-' }}</td>
+                <td>
+                  <span class="peak-badge" [class.is-peak]="rule.isPeak">
+                    {{ rule.isPeak ? '🔥 Cao điểm' : 'Thường' }}
+                  </span>
+                </td>
+                <td>{{ rule.discount > 0 ? rule.discount + '%' : '-' }}</td>
+                @if (isAdmin()) {
+                  <td>
+                    <button class="btn-edit" (click)="openEditModal(rule)">✏️ Cấu hình</button>
+                  </td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- VIP pricing -->
+    <div class="pricing-section">
+      <h3 class="section-title">⭐ Cấu hình Sân VIP</h3>
+      <div class="table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Khung giờ</th>
+              <th>Thời gian</th>
+              <th>Giá/giờ</th>
+              <th>Phụ thu</th>
+              <th>Cao điểm</th>
+              <th>Chiết khấu</th>
+              @if (isAdmin()) {
+                <th>Hành động</th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (rule of vipRules(); track rule.id) {
+              <tr>
+                <td><strong>{{ rule.label }}</strong></td>
+                <td>{{ rule.timeStart }} - {{ rule.timeEnd }}</td>
+                <td class="price">{{ formatCurrency(rule.pricePerHour) }}</td>
+                <td>{{ rule.peakSurcharge > 0 ? formatCurrency(rule.peakSurcharge) : '-' }}</td>
+                <td>
+                  <span class="peak-badge" [class.is-peak]="rule.isPeak">
+                    {{ rule.isPeak ? '🔥 Cao điểm' : 'Thường' }}
+                  </span>
+                </td>
+                <td>{{ rule.discount > 0 ? rule.discount + '%' : '-' }}</td>
+                @if (isAdmin()) {
+                  <td>
+                    <button class="btn-edit" (click)="openEditModal(rule)">✏️ Cấu hình</button>
+                  </td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Rule Modal Overlay -->
+  @if (showModal() && selectedRule()) {
+    @let rule = selectedRule()!;
+    <div class="modal-overlay" (click)="showModal.set(false)">
+      <div class="modal-card" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>⚙️ Điều chỉnh bảng giá</h3>
+          <button class="close-btn" (click)="showModal.set(false)">✕</button>
+        </div>
+        <form [formGroup]="pricingForm" (ngSubmit)="onSubmit()">
+          <div class="modal-body">
+            <div class="rule-summary">
+              <strong>Khung: {{ rule.label }}</strong>
+              <span>Loại sân: {{ rule.courtType === 'vip' ? 'VIP' : 'Standard' }} ({{ rule.timeStart }} - {{ rule.timeEnd }})</span>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Đơn giá/giờ (VNĐ) <span class="required">*</span></label>
+              <input type="number" formControlName="pricePerHour" class="form-input" placeholder="VD: 100000">
+              @if (showError('pricePerHour')) { <span class="field-error">Vui lòng nhập giá tiền hợp lệ</span> }
+            </div>
+            
+            <div class="form-group row-checkbox">
+              <label class="checkbox-label">
+                <input type="checkbox" formControlName="isPeak"> Khung giờ cao điểm
+              </label>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Phụ thu giờ cao điểm (VNĐ)</label>
+              <input type="number" formControlName="peakSurcharge" class="form-input" placeholder="VD: 20000">
+              @if (showError('peakSurcharge')) { <span class="field-error">Vui lòng nhập số tiền cọc tối thiểu lớn hơn hoặc bằng 0</span> }
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Tỷ lệ chiết khấu (%)</label>
+              <input type="number" formControlName="discount" class="form-input" placeholder="VD: 5" min="0" max="100">
+              @if (showError('discount')) { <span class="field-error">Tỷ lệ chiết khấu phải nằm trong khoảng 0 đến 100</span> }
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" (click)="showModal.set(false)">Hủy</button>
+            <button type="submit" class="btn btn-primary">💾 Lưu thay đổi</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+</div>

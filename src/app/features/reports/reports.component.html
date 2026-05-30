@@ -1,0 +1,371 @@
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h2 class="page-title">📈 Báo cáo & Thống kê</h2>
+      <p class="page-subtitle">Tổng quan doanh thu, thống kê hoạt động và lịch sử đặt sân</p>
+    </div>
+    <div class="tab-group">
+      <button class="tab" [class.active]="activeTab() === 'stats'" (click)="onTabChange('stats')">Thống kê chung</button>
+      <button class="tab" [class.active]="activeTab() === 'history'" (click)="onTabChange('history')">Nhật ký giao dịch</button>
+      <button class="tab" [class.active]="activeTab() === 'cancellations'" (click)="onTabChange('cancellations')">Lịch sử hủy đặt ({{ cancelledCount() }})</button>
+    </div>
+  </div>
+
+  <!-- TAB 1: GENERAL STATS -->
+  @if (activeTab() === 'stats') {
+    <div class="stats-grid">
+      <app-stat-card icon="💰" label="Doanh thu tổng" [value]="formatCurrency(monthRevenue())" color="#2563EB"></app-stat-card>
+      <app-stat-card icon="📋" label="Tổng lượt đặt" [value]="totalBookingsCount().toString()" color="#16A34A"></app-stat-card>
+      <app-stat-card icon="🚫" label="Số lần hủy" [value]="cancelledCount().toString()" color="#DC2626"></app-stat-card>
+      <app-stat-card icon="⭐" label="Tỷ lệ sử dụng" [value]="utilizationRate()" color="#F59E0B"></app-stat-card>
+    </div>
+
+    <div class="report-grid">
+      <!-- Chart 1: Daily Revenue -->
+      <div class="report-card">
+        <h3>📊 Doanh thu theo ngày (7 ngày gần nhất)</h3>
+        <div class="chart-placeholder">
+          <div class="bar-chart">
+            @for (day of weekData(); track day.date) {
+              <div class="bar-column">
+                <div class="bar-fill" [style.height]="day.percent + '%'">
+                  <span class="bar-value">{{ day.value }}</span>
+                </div>
+                <span class="bar-label">{{ day.label }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Chart 2: Top Courts -->
+      <div class="report-card">
+        <h3>🏸 Top sân được đặt nhiều nhất (Top 5)</h3>
+        <div class="rank-list">
+          @for (court of topCourts(); track court.name; let i = $index) {
+            <div class="rank-item">
+              <span class="rank-number">#{{ i + 1 }}</span>
+              <span class="rank-name">{{ court.name }}</span>
+              <div class="rank-bar-wrapper">
+                <div class="rank-bar" [style.width]="court.percent + '%'"></div>
+              </div>
+              <span class="rank-count">{{ court.count }} lượt</span>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Chart 3: Peak Hours -->
+      <div class="report-card">
+        <h3>🕒 Khung giờ cao điểm (Lượt đặt theo ca)</h3>
+        <div class="peak-hours-container">
+          @for (item of peakHoursData(); track item.label; let idx = $index) {
+            <div class="peak-item">
+              <div class="peak-header">
+                <span class="peak-label">{{ item.label }}</span>
+                <span class="peak-value">{{ item.count }} lượt ({{ item.percent }}%)</span>
+              </div>
+              <div class="peak-progress-bar-wrapper">
+                <div class="peak-progress-bar" [style.width]="item.percent + '%'" [class]="'color-' + idx"></div>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Chart 4: Revenue Structure Breakdown -->
+      <div class="report-card">
+        <h3>💸 Cơ cấu luồng doanh thu</h3>
+        @let revStruct = revenueStructureData();
+        <div class="rev-struct-container">
+          <div class="rev-total">
+            <span class="total-label">Tổng doanh thu thực tế</span>
+            <span class="total-value">{{ formatCurrency(revStruct.total) }}</span>
+          </div>
+          
+          <div class="multi-progress-bar">
+            <div class="progress-segment court-rent" [style.width]="revStruct.courtFeePercent + '%'" title="Tiền thuê sân"></div>
+            <div class="progress-segment services" [style.width]="revStruct.servicesPercent + '%'" title="Dịch vụ phụ trợ"></div>
+            <div class="progress-segment overtime" [style.width]="revStruct.overtimePercent + '%'" title="Phụ phí quá giờ"></div>
+          </div>
+          
+          <div class="rev-legend">
+            <div class="legend-item">
+              <span class="legend-dot court-rent"></span>
+              <div class="legend-details">
+                <span class="legend-title">Tiền thuê sân</span>
+                <span class="legend-val">{{ formatCurrency(revStruct.courtFee) }} ({{ revStruct.courtFeePercent }}%)</span>
+              </div>
+            </div>
+            <div class="legend-item">
+              <span class="legend-dot services"></span>
+              <div class="legend-details">
+                <span class="legend-title">Dịch vụ phụ trợ</span>
+                <span class="legend-val">{{ formatCurrency(revStruct.services) }} ({{ revStruct.servicesPercent }}%)</span>
+              </div>
+            </div>
+            <div class="legend-item">
+              <span class="legend-dot overtime"></span>
+              <div class="legend-details">
+                <span class="legend-title">Phụ phí quá giờ</span>
+                <span class="legend-val">{{ formatCurrency(revStruct.overtime) }} ({{ revStruct.overtimePercent }}%)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chart 5: All 8 Courts Performance -->
+      <div class="report-card full-width-card">
+        <h3>🏟️ Bảng xếp hạng & Hiệu năng chi tiết 8 Sân chơi</h3>
+        <div class="court-performance-grid">
+          @for (court of courtPerformanceData(); track court.id; let idx = $index) {
+            <div class="court-perf-card">
+              <div class="court-badge" [class.gold]="idx === 0" [class.silver]="idx === 1" [class.bronze]="idx === 2">
+                {{ idx + 1 }}
+              </div>
+              <div class="court-info-details">
+                <div class="court-name-row">
+                  <h4>{{ court.name }}</h4>
+                  <span class="court-count-tag">{{ court.count }} lượt chơi</span>
+                </div>
+                <div class="court-revenue-row">
+                  <span class="rev-label">Doanh thu đóng góp</span>
+                  <span class="rev-value">{{ formatCurrency(court.revenue) }}</span>
+                </div>
+                <div class="court-progress-wrapper">
+                  <div class="court-progress-bar" [style.width]="court.percent + '%'"></div>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- TAB 2: TRANSACTION HISTORY -->
+  @if (activeTab() === 'history') {
+    <!-- Search & Advanced Filters -->
+    <div class="search-filter-row">
+      <div class="search-box-wrapper">
+        <span class="search-icon">🔍</span>
+        <input type="text" class="search-input" placeholder="Tìm kiếm theo mã booking, tên khách, sân..." [value]="searchQuery()" (input)="onSearch($event)">
+      </div>
+      <div class="filter-controls-group">
+        <div class="select-group">
+          <label class="control-label">Trạng thái:</label>
+          <select class="select-dropdown" [value]="statusFilter()" (change)="onStatusFilterChange($event)">
+            <option value="all">Tất cả giao dịch</option>
+            <option value="completed">Đã hoàn thành</option>
+            <option value="cancelled">Đã hủy lịch</option>
+          </select>
+        </div>
+        <div class="select-group">
+          <label class="control-label">Hiển thị:</label>
+          <select class="select-dropdown" (change)="onPageSizeChange($event)">
+            <option [value]="5" [selected]="pageSize() === 5">5 dòng</option>
+            <option [value]="10" [selected]="pageSize() === 10">10 dòng</option>
+            <option [value]="20" [selected]="pageSize() === 20">20 dòng</option>
+            <option [value]="50" [selected]="pageSize() === 50">50 dòng</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Mã booking</th>
+            <th>Khách hàng</th>
+            <th>Sân</th>
+            <th>Ngày đặt</th>
+            <th>Tổng tiền</th>
+            <th>Tiền cọc</th>
+            <th>Trạng thái</th>
+            <th>Thao tác</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (p of paginatedPayments(); track p.id) {
+            <tr class="clickable-row" (click)="openDetails(p.id)">
+              <td><span class="code">#{{ p.bookingCode }}</span></td>
+              <td><strong>{{ p.customerName }}</strong></td>
+              <td>{{ p.courtName }}</td>
+              <td>{{ formatDate(p.date) }}</td>
+              <td>{{ formatCurrency(p.totalAmount) }}</td>
+              <td>{{ formatCurrency(p.deposit) }}</td>
+              <td>
+                <span class="role-badge" [class.badge-admin]="p.status === 'paid'" [class.badge-staff]="p.status === 'cancelled'">
+                  {{ p.status === 'paid' ? '🛡️ Hoàn thành' : '👤 Đã hủy' }}
+                </span>
+              </td>
+              <td>
+                <button class="btn-icon btn-detail" (click)="$event.stopPropagation(); openDetails(p.id)">👁️ Chi tiết</button>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="8" class="empty-text">
+                <span class="empty-icon">📭</span>
+                Không tìm thấy giao dịch nào phù hợp.
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      
+      <!-- Pagination controls -->
+      <div class="pagination-container">
+        <button class="btn btn-secondary" [disabled]="currentPage() === 1" (click)="prevPage()">← Trước</button>
+        <span class="page-info">Trang <strong>{{ currentPage() }}</strong> / {{ totalPages() }}</span>
+        <button class="btn btn-secondary" [disabled]="currentPage() === totalPages()" (click)="nextPage()">Sau →</button>
+      </div>
+    </div>
+  }
+
+  <!-- TAB 3: CANCELLATIONS LIST -->
+  @if (activeTab() === 'cancellations') {
+    <div class="cancellation-card">
+      <div class="table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Mã đặt sân</th>
+              <th>Khách hàng</th>
+              <th>Sân</th>
+              <th>Thời gian chơi</th>
+              <th>Người hủy</th>
+              <th>Lý do hủy</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (b of cancelledBookings(); track b.id) {
+              <tr>
+                <td><span class="cancel-code">#{{ b.code }}</span></td>
+                <td>
+                  <div class="customer-info">
+                    <strong>{{ b.customerName }}</strong>
+                    <span class="subtext">{{ b.customerPhone }}</span>
+                  </div>
+                </td>
+                <td><strong>{{ b.courtName }}</strong></td>
+                <td>
+                  <div class="time-info">
+                    <span>⏱️ {{ b.startTime }} - {{ b.endTime }}</span>
+                    <span class="subtext">📅 {{ formatDate(b.date) }}</span>
+                  </div>
+                </td>
+                <td><span class="badge-staff-name">👤 {{ b.staffName || 'Hệ thống' }}</span></td>
+                <td>
+                  <span class="cancel-reason">
+                    {{ b.note || 'Khách báo hủy qua điện thoại' }}
+                  </span>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6" class="empty-text">
+                  <span class="empty-icon">🎉</span>
+                  Không có lịch đặt sân nào bị hủy trong hệ thống.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+
+  <!-- Completed Booking Detail Modal Overlay -->
+  @if (showDetailModal() && activeBooking()) {
+    @let booking = activeBooking()!;
+    <div class="modal-overlay" (click)="showDetailModal.set(false)">
+      <div class="modal-card select-modal" style="max-width: 480px;" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>📄 Chi tiết lịch sử phiên chơi</h3>
+          <button class="close-btn" (click)="showDetailModal.set(false)">✕</button>
+        </div>
+        <div class="modal-body scrollable-modal-body">
+          <div class="detail-badge" [class.text-success]="booking.status === 'completed'" [class.text-error]="booking.status === 'cancelled'">
+            {{ booking.status === 'completed' ? '✓ Đã hoàn thành' : '✕ Đã hủy lịch' }}
+          </div>
+          
+          <div class="info-sheet" style="margin-top: 8px;">
+            <div class="info-row"><span>Mã đặt sân:</span><strong>{{ booking.code }}</strong></div>
+            <div class="info-row"><span>Khách hàng:</span><strong>{{ booking.customerName }}</strong></div>
+            <div class="info-row"><span>Số điện thoại:</span><strong>{{ booking.customerPhone }}</strong></div>
+            <div class="info-row"><span>Sân chơi:</span><strong>{{ booking.courtName }}</strong></div>
+            <div class="info-row"><span>Khung giờ:</span><strong>{{ booking.startTime }} - {{ booking.endTime }}</strong></div>
+            <div class="info-row"><span>Ngày đặt sân:</span><strong>{{ booking.date }}</strong></div>
+          </div>
+
+          <div class="bill-tally-card" style="background: #1e293b; margin-top: 8px; border-radius: 12px; padding: 20px 24px; color: #fff; display: flex; flex-direction: column; gap: 12px;">
+            <h4 class="bill-title" style="margin:0 0 4px; font-size:12px; font-weight: 700; color: #cbd5e1; border-bottom: 1px dashed #475569; padding-bottom: 6px; letter-spacing: 1px;">🧾 CHI TIẾT THANH TOÁN</h4>
+            <div class="bill-rows" style="display: flex; flex-direction: column; gap: 8px;">
+              <div class="bill-row" style="display: flex; justify-content: space-between; font-size: 13px; color: #cbd5e1;"><span>Tiền sân gốc:</span><span>{{ formatCurrency(booking.totalAmount) }}</span></div>
+              
+              @if (booking.overtimeMinutes && booking.overtimeMinutes > 0) {
+                <div class="bill-row text-error" style="display: flex; justify-content: space-between; font-size: 13px; color: #f87171;">
+                  <span>Phụ phí quá giờ (+{{ booking.overtimeMinutes }}p):</span>
+                  <span>+{{ formatCurrency(booking.overtimeAmount || 0) }}</span>
+                </div>
+              }
+
+              @if (booking.additionalServices && booking.additionalServices.length > 0) {
+                <div class="bill-row text-warning" style="display: flex; justify-content: space-between; font-size: 13px; color: #fbbf24;">
+                  <span>Phí dịch vụ phụ trợ:</span>
+                  <span>+{{ formatCurrency(getServicesTotal(booking)) }}</span>
+                </div>
+                @for (srv of booking.additionalServices; track srv.name) {
+                  <div style="font-size: 11px; color: #94a3b8; display: flex; justify-content: space-between; padding-left: 12px;">
+                    <span>- {{ srv.name }} (x{{ srv.quantity }}):</span>
+                    <span>{{ formatCurrency(srv.price * srv.quantity) }}</span>
+                  </div>
+                }
+              }
+
+              <div class="bill-row bill-grand-total" style="display: flex; justify-content: space-between; font-size: 15px; font-weight: 700; color: #fff; border-top: 1px solid #475569; padding-top: 8px;">
+                <span>TỔNG DOANH THU:</span>
+                <span>{{ formatCurrency(getGrandTotal(booking)) }}</span>
+              </div>
+              
+              <div class="bill-row text-success" style="display: flex; justify-content: space-between; font-size: 13px; color: #4ade80;"><span>Đã cọc trước đó ({{ getPaymentMethodLabel(booking.paymentMethod) }}):</span><span>-{{ formatCurrency(booking.deposit) }}</span></div>
+              
+              @if (booking.status === 'completed') {
+                <div class="bill-row text-warning" style="display: flex; justify-content: space-between; border-top: 1px dashed #475569; padding-top: 8px; font-size: 15px; font-weight: 700; color: #fbbf24;">
+                  <span>ĐÃ THANH TOÁN THÊM:</span>
+                  <span>{{ formatCurrency(booking.checkoutAmount || 0) }}</span>
+                </div>
+                <div class="bill-row" style="display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8; padding-top: 4px;">
+                  <span>Phương thức thanh toán thêm:</span>
+                  <span>{{ getPaymentMethodLabel(booking.checkoutPaymentMethod) }}</span>
+                </div>
+                @if (booking.checkoutTime) {
+                  <div class="bill-row" style="display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8;">
+                    <span>Thời gian checkout:</span>
+                    <span>{{ booking.checkoutTime }}</span>
+                  </div>
+                }
+              } @else {
+                <div class="bill-row text-error" style="display: flex; justify-content: space-between; border-top: 1px dashed #475569; padding-top: 8px; font-size: 14px; font-weight: 700; color: #f87171;">
+                  <span>LỊCH ĐÃ BỊ HỦY BỎ</span>
+                </div>
+                @if (booking.note) {
+                  <div class="bill-row" style="display: flex; justify-content: space-between; font-size: 11px; color: #f87171; padding-top: 4px;">
+                    <span>Lý do hủy:</span>
+                    <span>{{ booking.note }}</span>
+                  </div>
+                }
+              }
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" (click)="showDetailModal.set(false)">Đóng</button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

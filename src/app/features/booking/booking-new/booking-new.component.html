@@ -1,0 +1,139 @@
+<div class="booking-new">
+  <div class="page-header">
+    <h2 class="page-title">🏸 Đặt sân mới</h2>
+    <p class="page-subtitle">Điền thông tin để đặt sân cầu lông</p>
+  </div>
+  <div class="form-layout" [class.has-result]="checkResult()">
+    <div class="form-card">
+      <form [formGroup]="bookingForm" (ngSubmit)="onCheckAvailability()">
+        <div class="form-section">
+          <h3 class="section-title">📅 Thông tin đặt sân</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Ngày đặt <span class="required">*</span></label>
+              <input type="date" formControlName="date" class="form-input">
+              @if (showError('date')) { <span class="field-error">Vui lòng chọn ngày</span> }
+            </div>
+            <div class="form-group">
+              <label class="form-label">Loại sân <span class="required">*</span></label>
+              <select formControlName="courtType" class="form-input" (change)="onCourtTypeChange()">
+                <option value="">-- Chọn loại sân --</option>
+                <option value="standard">Standard</option>
+                <option value="vip">VIP</option>
+              </select>
+              @if (showError('courtType')) { <span class="field-error">Vui lòng chọn loại sân</span> }
+            </div>
+            <div class="form-group">
+              <label class="form-label">Sân ưu tiên <span class="required">*</span></label>
+              <select formControlName="courtId" class="form-input">
+                <option value="">-- Chọn sân --</option>
+                @for (court of filteredCourts(); track court.id) {
+                  <option [value]="court.id">{{ court.name }} - {{ court.description }}</option>
+                }
+              </select>
+              @if (showError('courtId')) { <span class="field-error">Vui lòng chọn sân</span> }
+            </div>
+            <div class="form-group">
+              <label class="form-label">Giờ bắt đầu <span class="required">*</span></label>
+              <select formControlName="startTime" class="form-input">
+                <option value="">-- Chọn giờ --</option>
+                @for (slot of timeSlots(); track slot.id) {
+                  <option [value]="slot.startTime">{{ slot.startTime }}</option>
+                }
+              </select>
+              @if (showError('startTime')) { <span class="field-error">Vui lòng chọn giờ bắt đầu</span> }
+            </div>
+            <div class="form-group">
+              <label class="form-label">Giờ kết thúc <span class="required">*</span></label>
+              <select formControlName="endTime" class="form-input">
+                <option value="">-- Chọn giờ --</option>
+                @for (slot of endTimeSlots(); track slot.id) {
+                  <option [value]="slot.endTime">{{ slot.endTime }}</option>
+                }
+              </select>
+              @if (showError('endTime')) { <span class="field-error">Vui lòng chọn giờ kết thúc</span> }
+            </div>
+          </div>
+        </div>
+        <div class="form-section">
+          <h3 class="section-title">👤 Thông tin khách hàng</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Số điện thoại <span class="required">*</span></label>
+              <input type="tel" formControlName="customerPhone" class="form-input" placeholder="VD: 0901234567" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+              @if (bookingForm.controls.customerPhone.errors?.['required'] && submitted()) { <span class="field-error">Vui lòng nhập số điện thoại</span> }
+              @if (bookingForm.controls.customerPhone.errors?.['pattern'] && submitted()) { <span class="field-error">Số điện thoại chỉ được chứa số</span> }
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tên khách hàng <span class="required">*</span></label>
+              <input type="text" formControlName="customerName" class="form-input" placeholder="Nhập tên khách hàng">
+              @if (showError('customerName')) { <span class="field-error">Vui lòng nhập tên khách hàng</span> }
+            </div>
+            <div class="form-group full-width">
+              <label class="form-label">Ghi chú</label>
+              <textarea formControlName="note" class="form-input form-textarea" placeholder="Ghi chú thêm (không bắt buộc)" rows="3"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary btn-lg" [disabled]="isChecking()">
+            @if (!isChecking()) { <span>🔍 Kiểm tra lịch trống</span> }
+            @else { <span class="btn-loading"><span class="spinner"></span> Đang kiểm tra...</span> }
+          </button>
+        </div>
+      </form>
+    </div>
+
+    @if (checkResult()) {
+      @let res = checkResult()!;
+      <div class="result-panel">
+        @if (!res.hasConflict && !isBlacklisted()) {
+          <div class="result-card result-success">
+            <div class="result-icon">✅</div>
+            <h3>Lịch trống!</h3>
+            <p>Sân {{ getCourtName() }} ngày {{ bookingForm.controls.date.value }} từ {{ bookingForm.controls.startTime.value }} - {{ bookingForm.controls.endTime.value }} có thể đặt.</p>
+            @if (foundCustomer()) {
+              @let customer = foundCustomer()!;
+              <div class="customer-info-result">
+                <h4>Thông tin khách hàng</h4>
+                <div class="info-row"><span>Tên:</span><strong>{{ customer.name }}</strong></div>
+                <div class="info-row"><span>SĐT:</span><strong>{{ customer.phone }}</strong></div>
+                <div class="info-row"><span>Số lần đặt:</span><strong>{{ customer.totalBookings }}</strong></div>
+              </div>
+            }
+            <button class="btn btn-primary btn-lg" (click)="onContinue()">Tiếp tục →</button>
+          </div>
+        }
+        @if (res.hasConflict) {
+          <div class="result-card result-error">
+            <div class="result-icon">❌</div>
+            <h3>Trùng lịch!</h3>
+            <p>{{ res.message }}</p>
+            @if (res.conflictBooking) {
+              @let conflict = res.conflictBooking;
+              <div class="conflict-detail">
+                <div class="info-row"><span>Mã đặt sân:</span><strong>{{ conflict.code }}</strong></div>
+                <div class="info-row"><span>Khách hàng:</span><strong>{{ conflict.customerName }}</strong></div>
+                <div class="info-row"><span>Thời gian:</span><strong>{{ conflict.startTime }} - {{ conflict.endTime }}</strong></div>
+              </div>
+            }
+          </div>
+        }
+        @if (!res.hasConflict && isBlacklisted()) {
+          @let blacklistCust = foundCustomer()!;
+          <div class="result-card result-warning">
+            <div class="result-icon">⚠️</div>
+            <h3>Cảnh báo: Khách hàng trong danh sách đen!</h3>
+            <p><strong>{{ blacklistCust.name }}</strong> ({{ blacklistCust.phone }})</p>
+            <div class="blacklist-reason"><span>Lý do:</span> {{ blacklistCust.blacklistReason }}</div>
+            <div class="blacklist-actions">
+              <button class="btn btn-danger" (click)="onRefuseService()">🚫 Từ chối phục vụ</button>
+              <button class="btn btn-warning" (click)="onContinueBlacklist()">⚡ Tiếp tục với cọc 100%</button>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </div>
+</div>
+<app-confirm-dialog [visible]="showRefuseDialog()" title="Từ chối phục vụ" message="Xác nhận từ chối phục vụ khách hàng này?" type="error" [actions]="refuseDialogActions" (cancel)="showRefuseDialog.set(false)"></app-confirm-dialog>
