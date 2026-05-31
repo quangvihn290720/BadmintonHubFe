@@ -259,6 +259,94 @@ export class MockBookingService {
     return { available, deposited, playing, revenue };
   }
 
+  cancelBooking(bookingId: number): void {
+    // Optimistic Update
+    this.bookingsSignal.update(list => {
+      const idx = list.findIndex(b => b.id === bookingId);
+      if (idx !== -1) {
+        const copy = [...list];
+        copy[idx] = { ...copy[idx], status: BookingStatus.Cancelled };
+        return copy;
+      }
+      return list;
+    });
+
+    if (!this.apiConfig.isMockMode()) {
+      this.http.post<any>(API_ENDPOINTS.BOOKINGS.CANCEL(bookingId), {})
+        .pipe(
+          catchError((err: any) => {
+            return of(null);
+          })
+        )
+        .subscribe((res: any) => {
+          this.fetchBookings();
+        });
+    }
+  }
+
+  checkConflictForEdit(bookingId: number, courtId: number, date: string, startTime: string, endTime: string): ConflictResult {
+    const existing = this.bookingsSignal().find(b =>
+      b.id !== bookingId &&
+      b.courtId === courtId &&
+      b.date === date &&
+      b.status !== BookingStatus.Cancelled &&
+      this.timesOverlap(b.startTime, b.endTime, startTime, endTime)
+    );
+
+    if (existing) {
+      return {
+        hasConflict: true,
+        conflictBooking: existing,
+        message: `Sân đã được đặt bởi ${existing.customerName} từ ${existing.startTime} - ${existing.endTime} (${this.getStatusLabel(existing.status)})`
+      };
+    }
+
+    return { hasConflict: false, message: 'Lịch trống, có thể đặt sân' };
+  }
+
+  updateBookingSchedule(
+    bookingId: number,
+    courtId: number,
+    courtName: string,
+    date: string,
+    startTime: string,
+    endTime: string
+  ): void {
+    const updatePayload = {
+      courtId,
+      courtName,
+      date,
+      startTime,
+      endTime
+    };
+
+    // Optimistic Update
+    this.bookingsSignal.update(list => {
+      const idx = list.findIndex(b => b.id === bookingId);
+      if (idx !== -1) {
+        const copy = [...list];
+        copy[idx] = {
+          ...copy[idx],
+          ...updatePayload
+        };
+        return copy;
+      }
+      return list;
+    });
+
+    if (!this.apiConfig.isMockMode()) {
+      this.http.post<any>(API_ENDPOINTS.BOOKINGS.RESCHEDULE(bookingId), updatePayload)
+        .pipe(
+          catchError((err: any) => {
+            return of(null);
+          })
+        )
+        .subscribe((res: any) => {
+          this.fetchBookings();
+        });
+    }
+  }
+
   private addMinutes(time: string, mins: number): string {
     const [h, m] = time.split(':').map(Number);
     const total = h * 60 + m + mins;

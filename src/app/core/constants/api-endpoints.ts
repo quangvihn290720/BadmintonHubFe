@@ -9,7 +9,9 @@ export const API_ENDPOINTS = {
   BOOKINGS: {
     BASE: '/bookings',
     CHECKIN: (id: number) => `/bookings/${id}/checkin`,
-    CHECKOUT: (id: number) => `/bookings/${id}/checkout`
+    CHECKOUT: (id: number) => `/bookings/${id}/checkout`,
+    CANCEL: (id: number) => `/bookings/${id}/cancel`,
+    RESCHEDULE: (id: number) => `/bookings/${id}/reschedule`
   },
   CUSTOMERS: {
     BASE: '/customers',

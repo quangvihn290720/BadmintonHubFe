@@ -5,6 +5,7 @@ import { MockBookingService } from '../../core/services/mock-booking.service';
 import { BookingStateService } from '../../core/services/booking-state.service';
 import { PricingService } from '../../core/services/pricing.service';
 import { MockCustomerService } from '../../core/services/mock-customer.service';
+import { AdditionalServiceService, ServiceItem } from '../../core/services/additional-service.service';
 import { BookingStatus, Court, Booking, PaymentMethod, TimeSlot } from '../../core/models';
 import { MOCK_COURTS } from '../../core/mock-data/courts.data';
 
@@ -20,6 +21,7 @@ export class DashboardComponent implements OnInit {
   private readonly bookingState = inject(BookingStateService);
   private readonly pricingService = inject(PricingService);
   private readonly customerService = inject(MockCustomerService);
+  private readonly additionalService = inject(AdditionalServiceService);
   private readonly router = inject(Router);
 
   readonly courts: Court[] = MOCK_COURTS;
@@ -71,14 +73,23 @@ export class DashboardComponent implements OnInit {
   // Modals state signals
   readonly showCheckInModal = signal<boolean>(false);
   readonly showCheckoutModal = signal<boolean>(false);
+  readonly showCancelConfirmModal = signal<boolean>(false);
   readonly activeBooking = signal<Booking | null>(null);
 
   // Beverage/Services checklist signal
-  readonly serviceItems = signal([
-    { key: 'water', name: '🥤 Nước ngọt/suối', price: 15000, quantity: 0 },
-    { key: 'ball', name: '🏸 Quả cầu lông', price: 25000, quantity: 0 },
-    { key: 'racket', name: '🎾 Thuê vợt', price: 50000, quantity: 0 }
-  ]);
+  readonly serviceItems = signal<ServiceItem[]>([]);
+
+  // Computed selected services (quantity > 0)
+  readonly selectedServices = computed(() => this.serviceItems().filter(i => i.quantity && i.quantity > 0));
+
+  // Service Popup & Reschedule signals
+  readonly showServicePopup = signal<boolean>(false);
+  readonly showRescheduleModal = signal<boolean>(false);
+  readonly rescheduleCourtId = signal<number>(1);
+  readonly rescheduleDate = signal<string>('');
+  readonly rescheduleStart = signal<string>('06:00');
+  readonly rescheduleEnd = signal<string>('07:00');
+  readonly rescheduleHours = ['06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00'];
 
   readonly checkoutPaymentMethod = signal<PaymentMethod>(PaymentMethod.Cash);
 
@@ -130,7 +141,7 @@ export class DashboardComponent implements OnInit {
 
   // Computed totals for service billing
   readonly servicesTotal = computed(() => {
-    return this.serviceItems().reduce((sum, item) => sum + item.price * item.quantity, 0);
+    return this.serviceItems().reduce((sum, item) => sum + item.price * (item.quantity || 0), 0);
   });
 
   readonly totalBill = computed(() => {
@@ -150,6 +161,8 @@ export class DashboardComponent implements OnInit {
     setTimeout(() => {
       this.scrollToCurrentTime();
     }, 150);
+    const dbServices = this.additionalService.getServices();
+    this.serviceItems.set(dbServices.map(s => ({ ...s, quantity: 0 })));
   }
 
   syncClockToSim(): void {
@@ -279,14 +292,15 @@ export class DashboardComponent implements OnInit {
   // Check-Out Billing Calculations
   resetCheckoutModalData(): void {
     this.checkoutPaymentMethod.set(PaymentMethod.Cash);
-    this.serviceItems.update(items => items.map(item => ({ ...item, quantity: 0 })));
+    const dbServices = this.additionalService.getServices();
+    this.serviceItems.set(dbServices.map(s => ({ ...s, quantity: 0 })));
   }
 
   adjustServiceQty(itemKey: string, delta: number): void {
     this.serviceItems.update(items =>
       items.map(item =>
         item.key === itemKey
-          ? { ...item, quantity: Math.max(0, item.quantity + delta) }
+          ? { ...item, quantity: Math.max(0, (item.quantity || 0) + delta) }
           : item
       )
     );
@@ -296,8 +310,8 @@ export class DashboardComponent implements OnInit {
     const booking = this.activeBooking();
     if (booking) {
       const services = this.serviceItems()
-        .filter(item => item.quantity > 0)
-        .map(item => ({ name: item.name, price: item.price, quantity: item.quantity }));
+        .filter(item => (item.quantity || 0) > 0)
+        .map(item => ({ name: item.name, price: item.price, quantity: item.quantity || 0 }));
       
       const grandTotal = this.totalBill();
       this.bookingService.checkOut(
@@ -396,6 +410,113 @@ export class DashboardComponent implements OnInit {
       case 'momo_qr': return 'MOMO / QR';
       default: return 'Không xác định';
     }
+  }
+
+  confirmCancelBooking(bookingId: number): void {
+    this.showCheckInModal.set(false);
+    this.showDetailModal.set(false);
+    this.showCancelConfirmModal.set(true);
+  }
+
+  executeCancelBooking(): void {
+    const booking = this.activeBooking();
+    if (booking) {
+      this.bookingService.cancelBooking(booking.id);
+      this.showCancelConfirmModal.set(false);
+      alert('Đã hủy lịch đặt sân thành công!');
+    }
+  }
+
+  findNextAvailableSlot(booking: Booking): { startTime: string; endTime: string } {
+    const toMin = (t: string) => {
+      const [h, m] = t.split(':').map(Number);
+      return h * 60 + m;
+    };
+    const toStr = (m: number) => {
+      const h = Math.floor(m / 60) % 24;
+      const min = m % 60;
+      return `${h.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
+    };
+
+    const durationMin = toMin(booking.endTime) - toMin(booking.startTime);
+    const courtId = booking.courtId;
+    const date = booking.date;
+
+    let currentStartMin = toMin(booking.startTime);
+    const maxDayMin = 22 * 60; // 22:00 max end time
+
+    // Keep advancing in 60-minute steps until we find a conflict-free slot
+    while (currentStartMin + durationMin <= maxDayMin) {
+      currentStartMin += 60;
+      const candidateStart = toStr(currentStartMin);
+      const candidateEnd = toStr(currentStartMin + durationMin);
+
+      const conflictResult = this.bookingService.checkConflictForEdit(
+        booking.id,
+        courtId,
+        date,
+        candidateStart,
+        candidateEnd
+      );
+
+      if (!conflictResult.hasConflict) {
+        return { startTime: candidateStart, endTime: candidateEnd };
+      }
+    }
+
+    // Fallback: If no future slot on that day is available, return the original
+    return { startTime: booking.startTime, endTime: booking.endTime };
+  }
+
+  openRescheduleModal(booking: Booking): void {
+    this.activeBooking.set(booking);
+    
+    // Find next available slot
+    const nextSlot = this.findNextAvailableSlot(booking);
+    
+    this.rescheduleCourtId.set(booking.courtId);
+    this.rescheduleDate.set(booking.date);
+    this.rescheduleStart.set(nextSlot.startTime);
+    this.rescheduleEnd.set(nextSlot.endTime);
+    
+    this.showCheckInModal.set(false);
+    this.showRescheduleModal.set(true);
+  }
+
+  confirmReschedule(): void {
+    const booking = this.activeBooking();
+    if (!booking) return;
+
+    const courtId = this.rescheduleCourtId();
+    const date = this.rescheduleDate();
+    const start = this.rescheduleStart();
+    const end = this.rescheduleEnd();
+
+    const court = this.courts.find(c => c.id === courtId);
+    const courtName = court ? court.name : booking.courtName;
+
+    // Validation: start time must be before end time
+    const toMin = (t: string) => {
+      const [h, m] = t.split(':').map(Number);
+      return h * 60 + m;
+    };
+
+    if (toMin(start) >= toMin(end)) {
+      alert('Thời gian bắt đầu phải trước thời gian kết thúc!');
+      return;
+    }
+
+    // Conflict check
+    const conflictResult = this.bookingService.checkConflictForEdit(booking.id, courtId, date, start, end);
+    if (conflictResult.hasConflict) {
+      alert(conflictResult.message);
+      return;
+    }
+
+    // Update schedule
+    this.bookingService.updateBookingSchedule(booking.id, courtId, courtName, date, start, end);
+    alert('Thay đổi lịch đặt sân thành công!');
+    this.showRescheduleModal.set(false);
   }
 
   private addMinutes(time: string, mins: number): string {

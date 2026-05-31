@@ -145,7 +145,8 @@ export class SidebarComponent {
         items: [
           { label: 'Thanh toán & Giao dịch', route: '/payment', icon: '💳' },
           { label: 'Quản lý khách hàng', route: '/customers', icon: '👥' },
-          { label: 'Cấu hình bảng giá', route: '/pricing', icon: '💰' }
+          { label: 'Cấu hình bảng giá', route: '/pricing', icon: '💰' },
+          { label: 'Quản lý dịch vụ', route: '/services', icon: '🥤' }
         ]
       },
       {

@@ -50,7 +50,7 @@
           </thead>
           <tbody>
             @for (s of paginatedStaff(); track s.id) {
-              <tr>
+              <tr class="clickable-row" (click)="openViewModal(s)">
                 <td>#{{ s.id }}</td>
                 <td><strong>{{ s.name }}</strong></td>
                 <td><code class="username-code">{{ s.username }}</code></td>
@@ -60,7 +60,7 @@
                   </span>
                 </td>
                 <td>
-                  <div class="action-buttons">
+                  <div class="action-buttons" (click)="$event.stopPropagation()">
                     <button class="btn-icon btn-detail" (click)="openViewModal(s)">👁️ Chi tiết</button>
                     <button class="btn-icon btn-edit" (click)="openEditModal(s)">✏️ Sửa</button>
                     @if (s.username !== 'admin') {
@@ -155,7 +155,7 @@
                 <div class="info-row"><span>ID nhân viên:</span><strong>#{{ member.id }}</strong></div>
                 <div class="info-row"><span>Họ và tên:</span><strong>{{ member.name }}</strong></div>
                 <div class="info-row"><span>Tên đăng nhập:</span><strong>{{ member.username }}</strong></div>
-                <div class="info-row"><span>Mật khẩu:</span><strong>{{ member.password || '••••••••' }}</strong></div>
+                <div class="info-row"><span>Mật khẩu:</span><strong>••••••••</strong></div>
               </div>
             </div>
             <div class="modal-footer">
