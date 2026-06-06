@@ -6,8 +6,8 @@
       </p>
     </div>
     <div class="tab-group">
-      <button class="tab" [class.active]="activeTab() === 'all'" (click)="onTabChange('all')">Tất cả ({{
-        allCustomers().length }})</button>
+      <button class="tab" [class.active]="activeTab() === 'regular'" (click)="onTabChange('regular')">Thành viên thường ({{
+        regularCustomers().length }})</button>
       <button class="tab" [class.active]="activeTab() === 'blacklist'" (click)="onTabChange('blacklist')">Danh sách đen
         ({{ blacklistCustomers().length }})</button>
     </div>
@@ -74,7 +74,7 @@
         </tr>
         } @empty {
         <tr>
-          <td [attr.colspan]="activeTab() === 'blacklist' ? 8 : 7" class="empty-text">
+          <td [attr.colspan]="activeTab() === 'blacklist' ? 9 : 8" class="empty-text">
             <span class="empty-icon">📭</span>
             Không tìm thấy khách hàng nào phù hợp với tìm kiếm.
           </td>

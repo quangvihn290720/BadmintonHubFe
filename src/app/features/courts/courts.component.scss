@@ -209,115 +209,283 @@
 .legend-circle.bg-warning { background: #eab308; }
 .legend-circle.bg-inactive { background: #64748b; opacity: 0.4; }
 
-.blueprint-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 16px;
-  padding: 16px;
-  background: #0f172a; /* Sleek dark court floor */
-  border-radius: 12px;
-  border: 2px solid #334155;
+/* Stadium-style container representation */
+.stadium-container {
+  background: #111827; /* Dark charcoal/wood base */
+  border-radius: 16px;
+  padding: 32px 24px;
+  border: 4px solid #1f2937;
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.8), 0 10px 30px rgba(0,0,0,0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  overflow-x: auto;
 }
 
+/* Stadium Row of courts */
+.stadium-row {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  flex-wrap: nowrap;
+  min-width: max-content;
+  padding: 0 12px;
+}
+
+/* Walkway corridor between the two rows of courts */
+.stadium-walkway {
+  min-width: max-content;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 16px 0;
+  border-top: 2px dashed #374151;
+  border-bottom: 2px dashed #374151;
+  position: relative;
+  background: #0b0f19;
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+.walkway-carpet {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.walkway-text {
+  color: #4b5563;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  user-select: none;
+  white-space: nowrap;
+}
+
+/* Stadium court wrapper */
+.stadium-court-wrapper {
+  position: relative;
+  perspective: 600px;
+}
+
+/* The Court Canvas */
 .mini-court {
-  aspect-ratio: 1.6 / 1;
-  background: #1e293b;
-  border: 1.5px solid #475569;
+  width: 190px;
+  height: 120px;
   border-radius: 8px;
   position: relative;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+  background: #115e59; /* Default green mat */
+  overflow: hidden;
+  border: 2px solid #042f2e;
+
+  &:hover {
+    transform: translateY(-6px) rotateX(3deg);
+    box-shadow: 0 15px 25px rgba(0, 0, 0, 0.5);
+  }
+
+  &.status-active {
+    background: #0f766e; /* Premium rich green court mat */
+    border-color: #0d9488;
+    
+    &:hover {
+      box-shadow: 0 0 20px rgba(20, 184, 166, 0.4), 0 15px 25px rgba(0, 0, 0, 0.5);
+    }
+  }
+
+  &.status-maintenance {
+    background: #9a3412; /* Amber-red for maintenance */
+    border-color: #ea580c;
+
+    .court-markings {
+      opacity: 0.35;
+    }
+    
+    &:hover {
+      box-shadow: 0 0 20px rgba(249, 115, 22, 0.4), 0 15px 25px rgba(0, 0, 0, 0.5);
+    }
+  }
+
+  &.status-inactive {
+    background: #374151; /* Disabled grey */
+    border-color: #4b5563;
+    opacity: 0.4;
+    
+    .court-markings {
+      opacity: 0.1;
+    }
+
+    &:hover {
+      transform: none;
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+  }
+}
+
+/* Court Overlay Info */
+.court-overlay-info {
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   padding: 10px;
-  cursor: pointer;
-  transition: all 0.2s ease-in-out;
-  overflow: hidden;
-}
-
-/* Badminton court lines representation */
-.mini-court::before {
-  content: '';
-  position: absolute;
-  top: 0; bottom: 0; left: 50%;
-  width: 1.5px;
-  background: rgba(255, 255, 255, 0.2); /* Center net line */
-  transform: translateX(-50%);
-  z-index: 1;
-}
-
-.mini-court::after {
-  content: '';
-  position: absolute;
-  top: 15%; bottom: 15%; left: 0; right: 0;
-  border-top: 1px dashed rgba(255, 255, 255, 0.12);
-  border-bottom: 1px dashed rgba(255, 255, 255, 0.12);
-  z-index: 1;
-}
-
-.mini-court:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 16px rgba(0,0,0,0.3);
-}
-
-.mini-court.status-active {
-  background: #065f46; /* Rich green for active courts */
-  border-color: #34d399;
-}
-.mini-court.status-active:hover {
-  box-shadow: 0 0 12px rgba(52, 211, 153, 0.4);
-}
-
-.mini-court.status-maintenance {
-  background: #78350f; /* Amber for maintenance */
-  border-color: #fbbf24;
-}
-.mini-court.status-maintenance:hover {
-  box-shadow: 0 0 12px rgba(251, 191, 36, 0.4);
-}
-
-.mini-court.status-inactive {
-  background: #1e293b;
-  opacity: 0.35;
-  border-color: #64748b;
-  cursor: not-allowed;
-}
-
-.court-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  z-index: 2;
+  z-index: 10;
+  pointer-events: none; /* Let clicks pass through to mini-court */
 }
 
 .court-code-label {
-  font-size: 13px;
-  font-weight: 800;
-  color: white;
+  font-size: 15px;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
 }
 
 .court-type-badge {
-  font-size: 10px;
-  font-weight: 700;
-  padding: 2px 5px;
-  border-radius: 4px;
-  background: rgba(255,255,255,0.15);
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 20px;
+  background: rgba(15, 23, 42, 0.85);
   color: #e2e8f0;
-}
-.court-type-badge.vip {
-  background: #fbbf24;
-  color: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  text-shadow: none;
+
+  &.vip {
+    background: #fbbf24;
+    color: #1e1b4b;
+    border-color: #fef08a;
+    box-shadow: 0 0 8px rgba(234, 179, 8, 0.6);
+  }
 }
 
-.court-status-label {
-  font-size: 10.5px;
-  font-weight: 700;
-  color: #94a3b8;
-  z-index: 2;
-  text-align: right;
+.court-status-text {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  align-self: flex-end;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
 }
-.mini-court.status-active .court-status-label {
-  color: #a7f3d0;
+
+.status-active .court-status-text {
+  color: #34d399;
 }
-.mini-court.status-maintenance .court-status-label {
-  color: #fde68a;
+
+.status-maintenance .court-status-text {
+  color: #f97316;
 }
+
+.status-inactive .court-status-text {
+  color: #9ca3af;
+}
+
+/* Court lines */
+.court-markings {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.line-outer {
+  position: absolute;
+  inset: 8px;
+  border: 1.5px solid rgba(255, 255, 255, 0.8);
+}
+
+.line-inner {
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 8px;
+  right: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.5);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.line-left-short {
+  position: absolute;
+  left: 33%;
+  top: 8px;
+  bottom: 8px;
+  width: 1.5px;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.line-right-short {
+  position: absolute;
+  right: 33%;
+  top: 8px;
+  bottom: 8px;
+  width: 1.5px;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.line-left-center {
+  position: absolute;
+  top: 50%;
+  left: 8px;
+  width: calc(33% - 8px);
+  height: 1.5px;
+  background: rgba(255, 255, 255, 0.8);
+  transform: translateY(-50%);
+}
+
+.line-right-center {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  width: calc(33% - 8px);
+  height: 1.5px;
+  background: rgba(255, 255, 255, 0.8);
+  transform: translateY(-50%);
+}
+
+.court-net-system {
+  position: absolute;
+  left: 50%;
+  top: 5px;
+  bottom: 5px;
+  width: 4px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.net-mesh-line {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 1px;
+  width: 2px;
+  background: repeating-linear-gradient(
+    180deg,
+    #ef4444,
+    #ef4444 2px,
+    #ffffff 2px,
+    #ffffff 4px
+  );
+  box-shadow: 0 0 4px rgba(239, 68, 68, 0.4);
+}
+
+.net-post {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fbbf24;
+  border: 1px solid #b45309;
+  z-index: 5;
+}
+

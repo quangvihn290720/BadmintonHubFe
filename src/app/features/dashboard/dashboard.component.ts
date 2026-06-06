@@ -292,8 +292,9 @@ export class DashboardComponent implements OnInit {
   canCheckIn(booking: Booking | null): boolean {
     if (!booking) return false;
     
-    // Date must match selected date
-    if (booking.date !== this.selectedDate()) return false;
+    // Date must be today
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (booking.date !== todayStr) return false;
 
     // Time must be within 15 minutes of start time
     const toMin = (t: string) => {

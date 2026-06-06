@@ -27,6 +27,14 @@ export interface BackendPromotion {
   status: string;
 }
 
+export interface BackendScheduleBookingServiceItem {
+  serviceItemId: Uuid;
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+}
+
 export interface BackendScheduleBooking {
   bookingId: Uuid;
   bookingCode: string;
@@ -39,6 +47,14 @@ export interface BackendScheduleBooking {
   customerId?: Uuid;
   customerName?: string;
   customerPhone?: string;
+
+  actualEndTime?: string | null;
+  courtAmount?: number;
+  overtimeAmount?: number;
+  serviceAmount?: number;
+  discountAmount?: number;
+  finalAmount?: number;
+  serviceItems?: BackendScheduleBookingServiceItem[];
 }
 
 export interface CreateBookingRequest {

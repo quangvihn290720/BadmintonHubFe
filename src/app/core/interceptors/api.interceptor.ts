@@ -2,6 +2,7 @@ import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { catchError, throwError } from 'rxjs';
 import { ApiConfigService } from '../services/api-config.service';
+import { getFriendlyErrorMessage } from '../constants/error-messages';
 
 export const apiInterceptor: HttpInterceptorFn = (req, next) => {
   const apiConfig = inject(ApiConfigService);
@@ -28,26 +29,33 @@ export const apiInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(apiReq).pipe(
     catchError((err: HttpErrorResponse) => {
-      let errorMsg = 'Da xay ra loi ket noi he thong.';
+      let errorMsg = 'Đã xảy ra lỗi kết nối hệ thống.';
 
       if (err.status === 0) {
-        errorMsg = 'Khong the ket noi Backend API tai http://localhost:8080.';
+        errorMsg = 'Không thể kết nối đến máy chủ Backend.';
       } else if (err.status === 401) {
-        errorMsg = 'Phien dang nhap da het han hoac khong hop le.';
-        apiConfig.setToken(null);
+        if (req.url.includes('/auth/login')) {
+          errorMsg = 'Tên đăng nhập hoặc mật khẩu không chính xác.';
+        } else {
+          errorMsg = 'Phiên đăng nhập đã hết hạn hoặc không hợp lệ.';
+          apiConfig.setToken(null);
+        }
       } else if (err.status === 403) {
-        errorMsg = 'Ban khong co quyen thuc hien chuc nang nay.';
+        errorMsg = 'Bạn không có quyền thực hiện chức năng này.';
       } else if (err.status === 404) {
-        errorMsg = 'Tai nguyen khong ton tai tren backend.';
+        errorMsg = 'Tài nguyên không tồn tại trên hệ thống.';
       } else if (err.status >= 500) {
-        errorMsg = `Loi may chu Backend (${err.status}).`;
-      } else if (err.error && typeof err.error === 'object' && err.error.message) {
-        errorMsg = err.error.message;
+        errorMsg = `Lỗi máy chủ hệ thống (${err.status}).`;
+      } else if (err.error && typeof err.error === 'object') {
+        const errObj = err.error as { code?: string; message?: string };
+        errorMsg = getFriendlyErrorMessage(errObj.code, errObj.message);
       } else if (err.message) {
         errorMsg = err.message;
       }
 
-      apiConfig.triggerError(errorMsg);
+      if (!req.url.includes('/auth/login')) {
+        apiConfig.triggerError(errorMsg);
+      }
       return throwError(() => err);
     })
   );

@@ -17,6 +17,10 @@ export class StaffComponent {
   readonly staffList = this.authService.staffList;
   readonly isAdmin = computed(() => this.authService.currentUser()?.role === 'admin');
   
+  constructor() {
+    this.authService.fetchStaff();
+  }
+
   // Confirmation Dialog Signals
   readonly showConfirmDialog = signal<boolean>(false);
   readonly confirmDialogTitle = signal<string>('');

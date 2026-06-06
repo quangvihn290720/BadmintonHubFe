@@ -9,6 +9,8 @@ import { AuthSession, BackendRole, LoginResponse } from '../models/auth.model';
 import { BackendEmployee } from '../models/backend-api.model';
 import { ApiConfigService } from './api-config.service';
 
+import { getFriendlyErrorMessage } from '../constants/error-messages';
+
 export interface StaffMember {
   id: string;
   name: string;
@@ -111,11 +113,19 @@ export class AuthService {
             expiresAt: Date.now() + data.expiresIn * 1000
           });
         }),
-        map(response => ({ success: response.success, message: response.message || 'Dang nhap thanh cong.' })),
-        catchError(err => of({
-          success: false,
-          message: err.error?.message || 'Khong the ket noi Backend API tai http://localhost:8080.'
-        }))
+        map(response => ({ success: response.success, message: response.message || 'Đăng nhập thành công.' })),
+        catchError(err => {
+          let errorMsg = 'Không thể kết nối đến máy chủ Backend.';
+          if (err.status === 401) {
+            errorMsg = 'Tên đăng nhập hoặc mật khẩu không chính xác.';
+          } else if (err.error && typeof err.error === 'object') {
+            errorMsg = getFriendlyErrorMessage(err.error.code, err.error.message);
+          }
+          return of({
+            success: false,
+            message: errorMsg
+          });
+        })
       );
   }
 

@@ -16,6 +16,16 @@ export class CourtsComponent {
   private readonly courtApi = inject(CourtApiService);
 
   readonly courts = this.courtApi.adminCourts;
+  readonly courtsRow1 = computed(() => {
+    const list = this.courts();
+    const half = Math.ceil(list.length / 2);
+    return list.slice(0, half);
+  });
+  readonly courtsRow2 = computed(() => {
+    const list = this.courts();
+    const half = Math.ceil(list.length / 2);
+    return list.slice(half);
+  });
   readonly loading = this.courtApi.loading;
   readonly searchQuery = signal<string>('');
   readonly showModal = signal<boolean>(false);

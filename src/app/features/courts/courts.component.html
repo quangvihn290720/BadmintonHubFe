@@ -17,31 +17,96 @@
   <!-- Visual Court Layout Simulator Grid -->
   <div class="layout-simulator-card">
     <div class="simulator-header">
-      <h3 class="simulator-title">🗺️ Sơ đồ vị trí và trạng thái sân hiện tại (Click ô sân để đổi nhanh)</h3>
+      <div>
+        <h3 class="simulator-title">🏟️ Sơ đồ mặt bằng sân vận động BadmintonHub</h3>
+        <p class="page-subtitle">Sân đấu mô phỏng thực tế. Click ô sân để sửa thông tin hoặc đổi nhanh trạng thái</p>
+      </div>
       <div class="simulator-legend">
         <span class="legend-item-group"><span class="legend-circle bg-success"></span> Hoạt động</span>
         <span class="legend-item-group"><span class="legend-circle bg-warning"></span> Bảo trì</span>
         <span class="legend-item-group"><span class="legend-circle bg-inactive"></span> Ngừng hoạt động</span>
       </div>
     </div>
-    <div class="blueprint-grid">
-      @for (court of courts(); track court.id) {
-        <div class="mini-court" 
-             [class.status-active]="court.status === 'AVAILABLE'" 
-             [class.status-maintenance]="court.status === 'MAINTENANCE'" 
-             [class.status-inactive]="court.status === 'INACTIVE'"
-             (click)="openEditModal(court)">
-          <div class="court-meta">
-            <span class="court-code-label">{{ court.code }}</span>
-            <span class="court-type-badge" [class.vip]="court.basePricePerHour > 150000">
-              {{ court.basePricePerHour > 150000 ? '⭐ VIP' : 'Std' }}
-            </span>
+
+    <div class="stadium-container">
+      <!-- Hàng sân phía trên -->
+      <div class="stadium-row">
+        @for (court of courtsRow1(); track court.id) {
+          <div class="stadium-court-wrapper">
+            <div class="mini-court" 
+                 [class.status-active]="court.status === 'AVAILABLE'" 
+                 [class.status-maintenance]="court.status === 'MAINTENANCE'" 
+                 [class.status-inactive]="court.status === 'INACTIVE'"
+                 (click)="openEditModal(court)">
+              <div class="court-markings">
+                <div class="line-outer"></div>
+                <div class="line-inner"></div>
+                <div class="line-left-short"></div>
+                <div class="line-right-short"></div>
+                <div class="line-left-center"></div>
+                <div class="line-right-center"></div>
+                <div class="court-net-system">
+                  <div class="net-post net-post-top"></div>
+                  <div class="net-mesh-line"></div>
+                  <div class="net-post net-post-bottom"></div>
+                </div>
+              </div>
+              <div class="court-overlay-info">
+                <span class="court-code-label">{{ court.code }}</span>
+                <span class="court-type-badge" [class.vip]="court.basePricePerHour > 150000">
+                  {{ court.basePricePerHour > 150000 ? '⭐ VIP' : 'Std' }}
+                </span>
+                <span class="court-status-text">
+                  {{ court.status === 'AVAILABLE' ? 'Sẵn sàng' : (court.status === 'MAINTENANCE' ? 'Bảo trì' : 'Đã khóa') }}
+                </span>
+              </div>
+            </div>
           </div>
-          <span class="court-status-label">
-            {{ court.status === 'AVAILABLE' ? 'Hoạt động' : (court.status === 'MAINTENANCE' ? 'Bảo trì' : 'Ngừng hoạt động') }}
-          </span>
+        }
+      </div>
+
+      <!-- Lối đi giữa các hàng sân -->
+      <div class="stadium-walkway">
+        <div class="walkway-carpet">
+          <span class="walkway-text">🚶 HÀNH LANG LỐI ĐI CHÍNH • MAIN WALKWAY • AN TOÀN LÀ TRÊN HẾT 🚶</span>
         </div>
-      }
+      </div>
+
+      <!-- Hàng sân phía dưới -->
+      <div class="stadium-row">
+        @for (court of courtsRow2(); track court.id) {
+          <div class="stadium-court-wrapper">
+            <div class="mini-court" 
+                 [class.status-active]="court.status === 'AVAILABLE'" 
+                 [class.status-maintenance]="court.status === 'MAINTENANCE'" 
+                 [class.status-inactive]="court.status === 'INACTIVE'"
+                 (click)="openEditModal(court)">
+              <div class="court-markings">
+                <div class="line-outer"></div>
+                <div class="line-inner"></div>
+                <div class="line-left-short"></div>
+                <div class="line-right-short"></div>
+                <div class="line-left-center"></div>
+                <div class="line-right-center"></div>
+                <div class="court-net-system">
+                  <div class="net-post net-post-top"></div>
+                  <div class="net-mesh-line"></div>
+                  <div class="net-post net-post-bottom"></div>
+                </div>
+              </div>
+              <div class="court-overlay-info">
+                <span class="court-code-label">{{ court.code }}</span>
+                <span class="court-type-badge" [class.vip]="court.basePricePerHour > 150000">
+                  {{ court.basePricePerHour > 150000 ? '⭐ VIP' : 'Std' }}
+                </span>
+                <span class="court-status-text">
+                  {{ court.status === 'AVAILABLE' ? 'Sẵn sàng' : (court.status === 'MAINTENANCE' ? 'Bảo trì' : 'Đã khóa') }}
+                </span>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
     </div>
   </div>
 

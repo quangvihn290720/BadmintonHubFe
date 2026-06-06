@@ -321,8 +321,10 @@ export class MockBookingService {
     const courtType = court?.type || 'standard';
     const startTimeStr = item.startTime.slice(11, 16);
     const endTimeStr = item.endTime.slice(11, 16);
+    
+    // Use the backend courtAmount if available and positive, otherwise calculate scheduled amount
     const calc = this.pricingService.calculatePrice(courtType, startTimeStr, endTimeStr, false);
-    const totalAmount = calc ? calc.totalAmount : 0;
+    const totalAmount = (item.courtAmount && item.courtAmount > 0) ? item.courtAmount : (calc ? calc.totalAmount : 0);
 
     return {
       id,
@@ -338,11 +340,23 @@ export class MockBookingService {
       status: this.toUiStatus(item.status),
       deposit: item.depositAmount || 0,
       totalAmount,
+      overtimeAmount: item.overtimeAmount || 0,
+      checkoutAmount: item.finalAmount || 0,
+      checkoutTime: item.actualEndTime ? item.actualEndTime.slice(11, 16) : undefined,
       paymentMethod: PaymentMethod.Cash,
       note: '',
       staffName: this.getStaffNameForBooking(item.bookingId),
       createdAt: item.startTime,
-      isBlacklistOverride: false
+      isBlacklistOverride: false,
+      additionalServices: (item.serviceItems && item.serviceItems.length > 0)
+        ? item.serviceItems.map(s => ({
+            name: s.name,
+            price: s.unitPrice,
+            quantity: s.quantity
+          }))
+        : (item.serviceAmount && item.serviceAmount > 0)
+          ? [{ name: 'Dịch vụ phụ trợ', price: item.serviceAmount, quantity: 1 }]
+          : []
     };
   }
 

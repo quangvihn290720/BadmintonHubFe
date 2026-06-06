@@ -18,21 +18,22 @@ export class CustomersComponent {
   private readonly pricingService = inject(PricingService);
 
   readonly allCustomers = this.customerService.customers;
+  readonly regularCustomers = computed(() => this.allCustomers().filter(c => !c.isBlacklisted));
   readonly blacklistCustomers = this.customerService.blacklistedCustomers;
 
-  readonly activeTab = signal<'all' | 'blacklist'>('all');
+  readonly activeTab = signal<'regular' | 'blacklist'>('regular');
   readonly searchQuery = signal<string>('');
   readonly currentPage = signal<number>(1);
   readonly pageSize = signal<number>(5);
 
   readonly displayedCustomers = computed(() => {
-    return this.activeTab() === 'blacklist' ? this.blacklistCustomers() : this.allCustomers();
+    return this.activeTab() === 'blacklist' ? this.blacklistCustomers() : this.regularCustomers();
   });
 
   readonly filteredCustomers = computed(() => {
     const query = this.searchQuery().toLowerCase().trim();
     const tab = this.activeTab();
-    const baseList = tab === 'blacklist' ? this.blacklistCustomers() : this.allCustomers();
+    const baseList = tab === 'blacklist' ? this.blacklistCustomers() : this.regularCustomers();
 
     if (!query) return baseList;
 
@@ -138,7 +139,7 @@ export class CustomersComponent {
     this.currentPage.set(1);
   }
 
-  onTabChange(tab: 'all' | 'blacklist'): void {
+  onTabChange(tab: 'regular' | 'blacklist'): void {
     this.activeTab.set(tab);
     this.currentPage.set(1);
     this.searchQuery.set('');

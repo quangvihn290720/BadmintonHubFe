@@ -77,7 +77,8 @@ export class ReportsComponent {
 
   // Advanced Statistic 1: Service Revenue Details
   readonly serviceRevenueDetails = computed(() => {
-    const bookings = this.bookingService.getAllBookings();
+    const date = this.selectedDate();
+    const bookings = this.bookingService.getAllBookings().filter(b => b.date === date && b.status === BookingStatus.Completed);
     const serviceMap = new Map<string, { name: string; quantity: number; revenue: number }>();
     
     bookings.forEach(b => {
