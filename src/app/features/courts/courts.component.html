@@ -1,0 +1,100 @@
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h2 class="page-title">Quan ly san</h2>
+      <p class="page-subtitle">Them, sua va doi trang thai san tu API quan tri backend</p>
+    </div>
+    <button class="btn btn-primary" (click)="openAddModal()">Them san</button>
+  </div>
+
+  <div class="search-filter-row">
+    <div class="search-box-wrapper">
+      <span class="search-icon">Search</span>
+      <input type="text" class="search-input" placeholder="Tim theo ma san, vi tri, trang thai..." [value]="searchQuery()" (input)="onSearch($event)">
+    </div>
+  </div>
+
+  @if (error()) {
+    <div class="table-card">
+      <div class="empty-text">{{ error() }}</div>
+    </div>
+  }
+
+  <div class="table-card">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Ma san</th>
+          <th>Gia gio</th>
+          <th>Vi tri/ghi chu</th>
+          <th>Trang thai</th>
+          <th>Hanh dong</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (court of filteredCourts(); track court.id) {
+          <tr>
+            <td><strong>{{ court.code }}</strong></td>
+            <td>{{ formatCurrency(court.basePricePerHour) }}</td>
+            <td>{{ court.locationNote || '-' }}</td>
+            <td><span class="status-pill" [class.active]="court.status === 'AVAILABLE'" [class.maintenance]="court.status === 'MAINTENANCE'">{{ court.status }}</span></td>
+            <td>
+              <div class="action-buttons">
+                <button class="btn-icon btn-edit" (click)="openEditModal(court)">Sua</button>
+                <button class="btn-icon" (click)="changeStatus(court, 'AVAILABLE')">Mo</button>
+                <button class="btn-icon" (click)="changeStatus(court, 'MAINTENANCE')">Bao tri</button>
+                <button class="btn-icon btn-delete" (click)="changeStatus(court, 'INACTIVE')">An</button>
+              </div>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="5" class="empty-text">{{ loading() ? 'Dang tai danh sach san...' : 'Chua co san nao.' }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (showModal()) {
+    <div class="modal-overlay" (click)="showModal.set(false)">
+      <div class="modal-card" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>{{ isEdit() ? 'Sua san' : 'Them san moi' }}</h3>
+          <button class="close-btn" (click)="showModal.set(false)">x</button>
+        </div>
+        <form [formGroup]="courtForm" (ngSubmit)="onSubmit()">
+          <div class="modal-body">
+            <div class="form-group">
+              <label class="form-label">Ma san <span class="required">*</span></label>
+              <input type="text" formControlName="code" class="form-input" placeholder="COURT-11">
+              @if (showError('code')) { <span class="field-error">Ma san la bat buoc</span> }
+            </div>
+            <div class="form-group">
+              <label class="form-label">Gia theo gio <span class="required">*</span></label>
+              <input type="number" formControlName="basePricePerHour" class="form-input" min="1">
+              @if (showError('basePricePerHour')) { <span class="field-error">Gia phai lon hon 0</span> }
+            </div>
+            <div class="form-group">
+              <label class="form-label">Vi tri/ghi chu</label>
+              <input type="text" formControlName="locationNote" class="form-input" placeholder="Zone A">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Trang thai <span class="required">*</span></label>
+              <select formControlName="status" class="form-input">
+                <option value="AVAILABLE">AVAILABLE</option>
+                <option value="MAINTENANCE">MAINTENANCE</option>
+                <option value="INACTIVE">INACTIVE</option>
+              </select>
+              @if (showError('status')) { <span class="field-error">Trang thai la bat buoc</span> }
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" (click)="showModal.set(false)">Huy</button>
+            <button type="submit" class="btn btn-primary">Luu</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+</div>
