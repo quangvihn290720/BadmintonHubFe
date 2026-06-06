@@ -144,21 +144,22 @@ export class SidebarComponent {
         title: 'KINH DOANH & KHÁCH HÀNG',
         items: [
           { label: 'Thanh toán & Giao dịch', route: '/payment', icon: '💳' },
-          { label: 'Quản lý khách hàng', route: '/customers', icon: '👥' },
-          { label: 'Cấu hình bảng giá', route: '/pricing', icon: '💰' },
-          { label: 'Quản lý dịch vụ', route: '/services', icon: '🥤' }
-        ]
-      },
-      {
-        title: 'HỆ THỐNG',
-        items: [
-          { label: 'Báo cáo & Thống kê', route: '/reports', icon: '📈' }
+          { label: 'Quản lý khách hàng', route: '/customers', icon: '👥' }
         ]
       }
     ];
 
     if (isAdmin) {
-      sections[2].items.push({ label: 'Tài khoản nhân viên', route: '/staff', icon: '🔑' });
+      sections.push({
+        title: '⚡ QUẢN TRỊ VIÊN',
+        items: [
+          { label: 'Quản lý sân', route: '/courts', icon: '🏟️' },
+          { label: 'Cấu hình bảng giá', route: '/pricing', icon: '💰' },
+          { label: 'Quản lý dịch vụ', route: '/services', icon: '🥤' },
+          { label: 'Báo cáo & Thống kê', route: '/reports', icon: '📈' },
+          { label: 'Tài khoản nhân viên', route: '/staff', icon: '🔑' }
+        ]
+      });
     }
 
     return sections;

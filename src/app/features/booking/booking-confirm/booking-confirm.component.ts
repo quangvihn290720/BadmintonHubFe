@@ -96,43 +96,40 @@ export class BookingConfirmComponent implements OnInit {
     }
 
     this.isSubmitting.set(true);
-    setTimeout(() => {
-      const pmMap: Record<string, PaymentMethod> = {
-        'cash': PaymentMethod.Cash,
-        'bank_transfer': PaymentMethod.BankTransfer,
-        'momo_qr': PaymentMethod.MomoQR
-      };
-      
-      const s = this.state();
-      const methodVal = this.paymentForm.controls.paymentMethod.value;
-      const finalMethod = pmMap[methodVal] || PaymentMethod.Cash;
+    const pmMap: Record<string, PaymentMethod> = {
+      'cash': PaymentMethod.Cash,
+      'bank_transfer': PaymentMethod.BankTransfer,
+      'momo_qr': PaymentMethod.MomoQR
+    };
 
-      const booking = this.bookingService.createBooking({
-        courtId: s.courtId!,
-        courtName: s.courtName!,
-        customerId: s.customerId || 0,
-        customerName: s.customerName!,
-        customerPhone: s.customerPhone!,
-        date: s.date!,
-        startTime: s.startTime!,
-        endTime: s.endTime!,
-        deposit,
-        totalAmount: calc.totalAmount,
-        paymentMethod: finalMethod,
-        note: s.note || '',
-        staffName: this.staffName(),
-        isBlacklistOverride: s.isBlacklistOverride || false
-      });
+    const s = this.state();
+    const methodVal = this.paymentForm.controls.paymentMethod.value;
+    const finalMethod = pmMap[methodVal] || PaymentMethod.Cash;
 
+    this.bookingService.createBookingAsync({
+      courtId: s.courtId!,
+      courtName: s.courtName!,
+      customerId: s.customerId || 0,
+      customerName: s.customerName!,
+      customerPhone: s.customerPhone!,
+      date: s.date!,
+      startTime: s.startTime!,
+      endTime: s.endTime!,
+      deposit,
+      totalAmount: calc.totalAmount,
+      paymentMethod: finalMethod,
+      note: s.note || '',
+      staffName: this.staffName(),
+      isBlacklistOverride: s.isBlacklistOverride || false
+    }).subscribe(booking => {
       this.bookingStateService.setPartial({
         deposit,
         totalAmount: calc.totalAmount,
         paymentMethod: finalMethod
       });
       this.bookingStateService.setLastCreatedBookingCode(booking.code);
-      
       this.isSubmitting.set(false);
       this.router.navigate(['/booking/result']);
-    }, 1200);
+    });
   }
 }

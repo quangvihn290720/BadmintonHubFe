@@ -35,6 +35,10 @@ export interface BackendScheduleBooking {
   startTime: string;
   endTime: string;
   status: string;
+  depositAmount: number;
+  customerId?: Uuid;
+  customerName?: string;
+  customerPhone?: string;
 }
 
 export interface CreateBookingRequest {

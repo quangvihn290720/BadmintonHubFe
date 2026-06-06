@@ -2,10 +2,11 @@ import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@a
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '../../core/services/auth.service';
 import { AdditionalServiceService, ServiceItem } from '../../core/services/additional-service.service';
+import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 
 @Component({
   selector: 'app-services',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, ConfirmDialogComponent],
   templateUrl: './services.component.html',
   styleUrl: './services.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -17,6 +18,12 @@ export class ServicesComponent {
 
   readonly services = this.additionalService.services;
   readonly isAdmin = computed(() => this.authService.currentUser()?.role === 'admin');
+
+  // Confirmation Dialog Signals
+  readonly showConfirmDialog = signal<boolean>(false);
+  readonly confirmDialogTitle = signal<string>('');
+  readonly confirmDialogMessage = signal<string>('');
+  readonly confirmDialogActions = signal<Array<{ label: string; type: 'primary' | 'danger' | 'secondary'; handler: () => void }>>([]);
 
   // Search Signal
   readonly searchQuery = signal<string>('');
@@ -72,9 +79,22 @@ export class ServicesComponent {
   }
 
   deleteService(id: number): void {
-    if (confirm('Xác nhận xóa dịch vụ phụ trợ này?')) {
-      this.additionalService.deleteService(id);
-    }
+    const item = this.services().find(s => s.id === id);
+    const name = item ? item.name : '';
+
+    this.confirmDialogTitle.set('Xác nhận xóa');
+    this.confirmDialogMessage.set(`Bạn có chắc chắn muốn xóa dịch vụ "${name}"? Hành động này không thể hoàn tác.`);
+    this.confirmDialogActions.set([
+      {
+        label: 'Xác nhận xóa',
+        type: 'danger',
+        handler: () => {
+          this.showConfirmDialog.set(false);
+          this.additionalService.deleteService(id);
+        }
+      }
+    ]);
+    this.showConfirmDialog.set(true);
   }
 
   onSubmit(): void {

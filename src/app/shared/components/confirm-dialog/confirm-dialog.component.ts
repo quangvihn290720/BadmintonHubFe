@@ -6,10 +6,11 @@ import { Component, input, output, ChangeDetectionStrategy } from '@angular/core
     @if (visible()) {
       <div class="dialog-overlay" (click)="onOverlayClick($event)">
         <div class="dialog"
+             [class.dialog-info]="type() === 'info'"
              [class.dialog-warning]="type() === 'warning'"
              [class.dialog-error]="type() === 'error'">
           <div class="dialog-header">
-            <span class="dialog-icon">{{ type() === 'warning' ? '⚠️' : type() === 'error' ? '❌' : 'ℹ%' }}</span>
+            <span class="dialog-icon">{{ type() === 'warning' ? '⚠️' : type() === 'error' ? '❌' : 'ℹ️' }}</span>
             <h3 class="dialog-title">{{ title() }}</h3>
           </div>
           <div class="dialog-body">
@@ -48,6 +49,7 @@ import { Component, input, output, ChangeDetectionStrategy } from '@angular/core
       max-width: 480px; width: 90%;
       box-shadow: 0 20px 60px rgba(0,0,0,0.15); animation: slideUp 0.3s ease;
     }
+    .dialog-info { border-top: 4px solid var(--color-primary); }
     .dialog-warning { border-top: 4px solid var(--color-warning); }
     .dialog-error { border-top: 4px solid var(--color-error); }
     .dialog-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }

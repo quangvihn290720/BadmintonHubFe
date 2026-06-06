@@ -1,10 +1,15 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { catchError, of } from 'rxjs';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Observable, catchError, forkJoin, map, of, switchMap, tap } from 'rxjs';
 import { Booking, BookingStatus, PaymentMethod } from '../models';
-import { MOCK_BOOKINGS } from '../mock-data';
-import { ApiConfigService } from './api-config.service';
 import { API_ENDPOINTS } from '../constants/api-endpoints';
+import { ApiResponse } from '../models/api-response.model';
+import { BackendScheduleBooking, CreateBookingRequest, CreateBookingResponse } from '../models/backend-api.model';
+import { ApiConfigService } from './api-config.service';
+import { AuthService } from './auth.service';
+import { CourtApiService } from './court-api.service';
+import { MockCustomerService } from './mock-customer.service';
+import { PricingService } from './pricing.service';
 
 export interface ConflictResult {
   hasConflict: boolean;
@@ -16,30 +21,36 @@ export interface ConflictResult {
 export class MockBookingService {
   private readonly http = inject(HttpClient);
   private readonly apiConfig = inject(ApiConfigService);
+  private readonly authService = inject(AuthService);
+  private readonly courtApi = inject(CourtApiService);
+  private readonly customerService = inject(MockCustomerService);
+  private readonly pricingService = inject(PricingService);
 
-  private readonly bookingsSignal = signal<Booking[]>([...MOCK_BOOKINGS]);
+  private readonly bookingsSignal = signal<Booking[]>([]);
   readonly bookings = this.bookingsSignal.asReadonly();
-  
-  private nextId = MOCK_BOOKINGS.length + 1;
+
+  private nextId = 1;
+  private readonly backendIds = new Map<number, string>();
 
   constructor() {
     this.fetchBookings();
   }
 
-  fetchBookings(): void {
-    if (this.apiConfig.isMockMode()) return;
+  fetchBookings(date = new Date().toISOString().split('T')[0]): void {
+    this.fetchSchedule(date).subscribe();
+  }
 
-    this.http.get<Booking[]>(API_ENDPOINTS.BOOKINGS.BASE)
-      .pipe(
-        catchError((err: any) => {
-          return of([] as Booking[]);
-        })
-      )
-      .subscribe((list: Booking[]) => {
-        if (list && list.length > 0) {
-          this.bookingsSignal.set(list);
-        }
-      });
+  fetchSchedule(date: string): Observable<Booking[]> {
+    return (this.http.get(API_ENDPOINTS.BOOKINGS.SCHEDULES, {
+      params: { date }
+    }) as Observable<ApiResponse<BackendScheduleBooking[]>>).pipe(
+      map(response => (response.data || []).map((item: BackendScheduleBooking) => this.toUiBooking(item))),
+      tap(bookings => {
+        const otherDates = this.bookingsSignal().filter(booking => booking.date !== date);
+        this.bookingsSignal.set([...otherDates, ...bookings]);
+      }),
+      catchError(() => of([]))
+    );
   }
 
   getAllBookings(): Booking[] {
@@ -66,19 +77,11 @@ export class MockBookingService {
       return {
         hasConflict: true,
         conflictBooking: existing,
-        message: `Sân đã được đặt bởi ${existing.customerName} từ ${existing.startTime} - ${existing.endTime} (${this.getStatusLabel(existing.status)})`
+        message: `Sân đã được đặt từ ${existing.startTime} - ${existing.endTime} (${this.getStatusLabel(existing.status)})`
       };
     }
 
     return { hasConflict: false, message: 'Lịch trống, có thể đặt sân' };
-  }
-
-  private timesOverlap(aStart: string, aEnd: string, bStart: string, bEnd: string): boolean {
-    const toMin = (t: string) => {
-      const [h, m] = t.split(':').map(Number);
-      return h * 60 + m;
-    };
-    return toMin(aStart) < toMin(bEnd) && toMin(bStart) < toMin(aEnd);
   }
 
   generateBookingCode(): string {
@@ -90,48 +93,52 @@ export class MockBookingService {
     return `BK-${dateStr}-${seq}`;
   }
 
-  createBooking(data: {
-    courtId: number;
-    courtName: string;
-    customerId: number;
-    customerName: string;
-    customerPhone: string;
-    date: string;
-    startTime: string;
-    endTime: string;
-    deposit: number;
-    totalAmount: number;
-    paymentMethod: PaymentMethod;
-    note: string;
-    staffName: string;
-    isBlacklistOverride: boolean;
-  }): Booking {
-    const booking: Booking = {
-      id: this.nextId++,
-      code: this.generateBookingCode(),
-      ...data,
-      status: BookingStatus.Deposited,
-      createdAt: new Date().toISOString(),
-    };
-    
-    if (this.apiConfig.isMockMode()) {
-      this.bookingsSignal.update(list => [...list, booking]);
-    } else {
-      this.http.post<Booking>(API_ENDPOINTS.BOOKINGS.BASE, booking)
-        .pipe(
-          catchError((err: any) => {
-            return of(null);
-          })
-        )
-        .subscribe((res: any) => {
-          if (res) this.fetchBookings();
-        });
-      
-      // Optimistic update
-      this.bookingsSignal.update(list => [...list, booking]);
-    }
-    
+  createBooking(data: CreateUiBookingData): Booking {
+    const booking = this.optimisticBooking(data);
+    this.bookingsSignal.update(list => [...list, booking]);
+    this.createBookingAsync(data, booking).subscribe();
     return booking;
+  }
+
+  createBookingAsync(data: CreateUiBookingData, optimistic?: Booking): Observable<Booking> {
+    const booking = optimistic || this.optimisticBooking(data);
+
+    const courtId = this.courtApi.getBackendCourtId(data.courtId);
+    const session = this.authService.getCurrentSession();
+    if (!courtId || !session) {
+      return of(booking);
+    }
+
+    const body: CreateBookingRequest = {
+      customerId: this.customerService.getBackendCustomerId(data.customerId),
+      employeeId: session.id,
+      courtId,
+      startTime: `${data.date}T${data.startTime}:00`,
+      endTime: `${data.date}T${data.endTime}:00`,
+      depositAmount: data.deposit,
+      depositPaymentMethod: this.toBackendPaymentMethod(data.paymentMethod),
+      depositTransactionCode: `DEP-${Date.now()}`
+    };
+
+    const headers = new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID() });
+    return (this.http.post(API_ENDPOINTS.BOOKINGS.BASE, body, { headers }) as Observable<ApiResponse<CreateBookingResponse>>).pipe(
+      map(response => response.data),
+      map(response => ({
+        backendId: response.bookingId,
+        booking: {
+          ...booking,
+          code: response.bookingCode,
+          status: this.toUiStatus(response.status)
+        }
+      })),
+      tap(saved => {
+        this.backendIds.set(saved.booking.id, saved.backendId);
+        this.replaceBooking(booking.id, saved.booking);
+        this.fetchSchedule(data.date).subscribe();
+      }),
+      map(saved => saved.booking),
+      catchError(() => of(booking))
+    );
   }
 
   getSlotStatus(courtId: number, date: string, startTime: string, endTime: string): BookingStatus {
@@ -154,39 +161,25 @@ export class MockBookingService {
   }
 
   checkIn(bookingId: number): void {
-    // Optimistic Update
-    this.bookingsSignal.update(list => {
-      const idx = list.findIndex(b => b.id === bookingId);
-      if (idx !== -1) {
-        const copy = [...list];
-        copy[idx] = { ...copy[idx], status: BookingStatus.Playing };
-        return copy;
-      }
-      return list;
-    });
-
-    if (!this.apiConfig.isMockMode()) {
-      this.http.post<any>(API_ENDPOINTS.BOOKINGS.CHECKIN(bookingId), {})
-        .pipe(
-          catchError((err: any) => {
-            return of(null);
-          })
-        )
-        .subscribe((res: any) => {
-          this.fetchBookings();
-        });
+    this.updateStatus(bookingId, BookingStatus.Playing);
+    const backendId = this.backendIds.get(bookingId);
+    if (backendId) {
+      (this.http.post(API_ENDPOINTS.BOOKINGS.CHECKIN(backendId), {}, {
+        headers: new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID() })
+      }) as Observable<ApiResponse<unknown>>).pipe(catchError(() => of(null))).subscribe(() => this.fetchBookings());
     }
   }
 
   checkOut(
     bookingId: number,
-    services: { name: string; price: number; quantity: number }[],
+    services: { key?: string; name: string; price: number; quantity: number }[],
     overtimeMin: number,
     overtimeAmt: number,
     checkoutAmt: number,
     pm: PaymentMethod,
     timeStr: string
   ): void {
+    const booking = this.bookingsSignal().find(b => b.id === bookingId);
     const checkoutPayload = {
       additionalServices: services,
       overtimeMinutes: overtimeMin,
@@ -197,30 +190,27 @@ export class MockBookingService {
       status: BookingStatus.Completed
     };
 
-    // Optimistic Update
-    this.bookingsSignal.update(list => {
-      const idx = list.findIndex(b => b.id === bookingId);
-      if (idx !== -1) {
-        const copy = [...list];
-        copy[idx] = {
-          ...copy[idx],
-          ...checkoutPayload
-        };
-        return copy;
-      }
-      return list;
-    });
+    this.bookingsSignal.update(list => list.map(b => b.id === bookingId ? { ...b, ...checkoutPayload } : b));
 
-    if (!this.apiConfig.isMockMode()) {
-      this.http.post<any>(API_ENDPOINTS.BOOKINGS.CHECKOUT(bookingId), checkoutPayload)
-        .pipe(
-          catchError((err: any) => {
-            return of(null);
-          })
-        )
-        .subscribe((res: any) => {
-          this.fetchBookings();
-        });
+    const backendId = this.backendIds.get(bookingId);
+    if (backendId && booking) {
+      const serviceCalls = services
+        .filter(service => service.key && service.quantity > 0)
+        .map(service => (this.http.post(API_ENDPOINTS.BOOKINGS.SERVICE_ITEMS(backendId), {
+          serviceItemId: service.key,
+          quantity: service.quantity,
+          note: service.name
+        }, { headers: new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID() }) }) as Observable<ApiResponse<unknown>>));
+
+      const addServices$: Observable<unknown> = serviceCalls.length ? forkJoin(serviceCalls) : of([]);
+      addServices$.pipe(
+        switchMap(() => (this.http.post(API_ENDPOINTS.BOOKINGS.CHECKOUT(backendId), {
+          actualEndTime: `${booking.date}T${timeStr}:00`,
+          paymentMethod: this.toBackendPaymentMethod(pm),
+          transactionCode: `FINAL-${Date.now()}`
+        }, { headers: new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID() }) }) as Observable<ApiResponse<unknown>>)),
+        catchError(() => of(null))
+      ).subscribe(() => this.fetchBookings(booking.date));
     }
   }
 
@@ -239,14 +229,14 @@ export class MockBookingService {
     const todayBookings = this.getBookingsByDate(date);
     const deposited = todayBookings.filter(b => b.status === BookingStatus.Deposited).length;
     const playing = todayBookings.filter(b => b.status === BookingStatus.Playing).length;
-    
     const revenue = todayBookings
       .filter(b => b.status !== BookingStatus.Cancelled)
       .reduce((sum, b) => sum + b.deposit + (b.checkoutAmount || 0), 0);
 
     let occupiedCourts = 0;
-    for (let courtId = 1; courtId <= 8; courtId++) {
-      const isOccupied = todayBookings.some(b => 
+    const totalCourts = Math.max(this.courtApi.courts().length, 8);
+    for (let courtId = 1; courtId <= totalCourts; courtId++) {
+      const isOccupied = todayBookings.some(b =>
         b.courtId === courtId &&
         b.status !== BookingStatus.Cancelled &&
         b.status !== BookingStatus.Completed &&
@@ -254,33 +244,24 @@ export class MockBookingService {
       );
       if (isOccupied) occupiedCourts++;
     }
-    const available = 8 - occupiedCourts;
+    const available = totalCourts - occupiedCourts;
 
     return { available, deposited, playing, revenue };
   }
 
   cancelBooking(bookingId: number): void {
-    // Optimistic Update
-    this.bookingsSignal.update(list => {
-      const idx = list.findIndex(b => b.id === bookingId);
-      if (idx !== -1) {
-        const copy = [...list];
-        copy[idx] = { ...copy[idx], status: BookingStatus.Cancelled };
-        return copy;
-      }
-      return list;
-    });
-
-    if (!this.apiConfig.isMockMode()) {
-      this.http.post<any>(API_ENDPOINTS.BOOKINGS.CANCEL(bookingId), {})
-        .pipe(
-          catchError((err: any) => {
-            return of(null);
-          })
-        )
-        .subscribe((res: any) => {
-          this.fetchBookings();
-        });
+    this.updateStatus(bookingId, BookingStatus.Cancelled);
+    const booking = this.bookingsSignal().find(b => b.id === bookingId);
+    const backendId = this.backendIds.get(bookingId);
+    if (backendId) {
+      (this.http.post(API_ENDPOINTS.BOOKINGS.CANCEL(backendId), {
+        reason: 'Customer requested cancellation',
+        refundAmount: 0,
+        refundPaymentMethod: 'CASH',
+        transactionCode: `RF-${Date.now()}`
+      }, { headers: new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID() }) }) as Observable<ApiResponse<unknown>>)
+        .pipe(catchError(() => of(null)))
+        .subscribe(() => booking && this.fetchBookings(booking.date));
     }
   }
 
@@ -292,59 +273,122 @@ export class MockBookingService {
       b.status !== BookingStatus.Cancelled &&
       this.timesOverlap(b.startTime, b.endTime, startTime, endTime)
     );
-
-    if (existing) {
-      return {
-        hasConflict: true,
-        conflictBooking: existing,
-        message: `Sân đã được đặt bởi ${existing.customerName} từ ${existing.startTime} - ${existing.endTime} (${this.getStatusLabel(existing.status)})`
-      };
-    }
-
-    return { hasConflict: false, message: 'Lịch trống, có thể đặt sân' };
+    return existing
+      ? { hasConflict: true, conflictBooking: existing, message: `Sân đã có lịch từ ${existing.startTime} - ${existing.endTime}` }
+      : { hasConflict: false, message: 'Lịch trống, có thể đặt sân' };
   }
 
-  updateBookingSchedule(
-    bookingId: number,
-    courtId: number,
-    courtName: string,
-    date: string,
-    startTime: string,
-    endTime: string
-  ): void {
-    const updatePayload = {
-      courtId,
-      courtName,
-      date,
-      startTime,
-      endTime
-    };
+  updateBookingSchedule(bookingId: number, courtId: number, courtName: string, date: string, startTime: string, endTime: string): void {
+    this.bookingsSignal.update(list => list.map(b => b.id === bookingId ? { ...b, courtId, courtName, date, startTime, endTime } : b));
+  }
 
-    // Optimistic Update
-    this.bookingsSignal.update(list => {
-      const idx = list.findIndex(b => b.id === bookingId);
-      if (idx !== -1) {
-        const copy = [...list];
-        copy[idx] = {
-          ...copy[idx],
-          ...updatePayload
-        };
-        return copy;
-      }
-      return list;
-    });
+  getBackendBookingId(uiBookingId: number): string | null {
+    return this.backendIds.get(uiBookingId) || null;
+  }
 
-    if (!this.apiConfig.isMockMode()) {
-      this.http.post<any>(API_ENDPOINTS.BOOKINGS.RESCHEDULE(bookingId), updatePayload)
-        .pipe(
-          catchError((err: any) => {
-            return of(null);
-          })
-        )
-        .subscribe((res: any) => {
-          this.fetchBookings();
-        });
+  private getStaffNameForBooking(bookingId: string, employeeId?: string): string {
+    const staffs = this.authService.getAllStaff();
+    if (employeeId) {
+      const match = staffs.find(s => s.id === employeeId);
+      if (match) return match.name;
     }
+    if (staffs.length > 0) {
+      const hash = bookingId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      return staffs[hash % staffs.length].name;
+    }
+    const current = this.authService.currentUser();
+    return current ? current.name : 'Nguyễn Văn A';
+  }
+
+  private optimisticBooking(data: CreateUiBookingData): Booking {
+    return {
+      id: this.nextId++,
+      code: this.generateBookingCode(),
+      ...data,
+      status: BookingStatus.Deposited,
+      createdAt: new Date().toISOString()
+    };
+  }
+
+  private toUiBooking(item: BackendScheduleBooking): Booking {
+    const uiCourtId = this.courtApi.getUiCourtId(item.courtId) || this.nextId;
+    const existingId = [...this.backendIds.entries()].find(([, backendId]) => backendId === item.bookingId)?.[0];
+    const id = existingId || this.nextId++;
+    this.backendIds.set(id, item.bookingId);
+
+    const uiCustomerId = item.customerId ? (this.customerService.getAllCustomers().find(c => c.backendId === item.customerId)?.id || 0) : 0;
+    const court = this.courtApi.courts().find(c => c.id === uiCourtId);
+    const courtType = court?.type || 'standard';
+    const startTimeStr = item.startTime.slice(11, 16);
+    const endTimeStr = item.endTime.slice(11, 16);
+    const calc = this.pricingService.calculatePrice(courtType, startTimeStr, endTimeStr, false);
+    const totalAmount = calc ? calc.totalAmount : 0;
+
+    return {
+      id,
+      code: item.bookingCode,
+      courtId: uiCourtId,
+      courtName: item.courtCode,
+      customerId: uiCustomerId,
+      customerName: item.customerName || item.bookingCode,
+      customerPhone: item.customerPhone || '',
+      date: item.startTime.slice(0, 10),
+      startTime: startTimeStr,
+      endTime: endTimeStr,
+      status: this.toUiStatus(item.status),
+      deposit: item.depositAmount || 0,
+      totalAmount,
+      paymentMethod: PaymentMethod.Cash,
+      note: '',
+      staffName: this.getStaffNameForBooking(item.bookingId),
+      createdAt: item.startTime,
+      isBlacklistOverride: false
+    };
+  }
+
+  private replaceBooking(id: number, booking: Booking): void {
+    this.bookingsSignal.update(list => list.map(item => item.id === id ? booking : item));
+  }
+
+  private updateStatus(id: number, status: BookingStatus): void {
+    this.bookingsSignal.update(list => list.map(item => item.id === id ? { ...item, status } : item));
+  }
+
+  private toUiStatus(status: string): BookingStatus {
+    switch (status) {
+      case 'DEPOSITED':
+      case 'PENDING_DEPOSIT':
+        return BookingStatus.Deposited;
+      case 'PLAYING':
+        return BookingStatus.Playing;
+      case 'COMPLETED':
+        return BookingStatus.Completed;
+      case 'CANCELLED':
+      case 'NO_SHOW':
+        return BookingStatus.Cancelled;
+      default:
+        return BookingStatus.Deposited;
+    }
+  }
+
+  private toBackendPaymentMethod(method: PaymentMethod): string {
+    switch (method) {
+      case PaymentMethod.BankTransfer:
+        return 'BANK_TRANSFER';
+      case PaymentMethod.MomoQR:
+        return 'QR_CODE';
+      case PaymentMethod.Cash:
+      default:
+        return 'CASH';
+    }
+  }
+
+  private timesOverlap(aStart: string, aEnd: string, bStart: string, bEnd: string): boolean {
+    const toMin = (t: string) => {
+      const [h, m] = t.split(':').map(Number);
+      return h * 60 + m;
+    };
+    return toMin(aStart) < toMin(bEnd) && toMin(bStart) < toMin(aEnd);
   }
 
   private addMinutes(time: string, mins: number): string {
@@ -354,4 +398,21 @@ export class MockBookingService {
     const newM = total % 60;
     return `${newH.toString().padStart(2, '0')}:${newM.toString().padStart(2, '0')}`;
   }
+}
+
+interface CreateUiBookingData {
+  courtId: number;
+  courtName: string;
+  customerId: number;
+  customerName: string;
+  customerPhone: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  deposit: number;
+  totalAmount: number;
+  paymentMethod: PaymentMethod;
+  note: string;
+  staffName: string;
+  isBlacklistOverride: boolean;
 }

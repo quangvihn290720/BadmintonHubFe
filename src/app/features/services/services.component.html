@@ -87,5 +87,13 @@
         </div>
       </div>
     }
+    <app-confirm-dialog
+      [visible]="showConfirmDialog()"
+      [title]="confirmDialogTitle()"
+      [message]="confirmDialogMessage()"
+      type="warning"
+      [actions]="confirmDialogActions()"
+      (cancel)="showConfirmDialog.set(false)">
+    </app-confirm-dialog>
   </div>
 </div>

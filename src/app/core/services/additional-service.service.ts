@@ -1,23 +1,53 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Observable, catchError, from, of } from 'rxjs';
+import { API_ENDPOINTS } from '../constants/api-endpoints';
+import { ApiResponse } from '../models/api-response.model';
+import { BackendServiceItem } from '../models/backend-api.model';
+import { ApiConfigService } from './api-config.service';
+import { ServiceItemApiService } from './service-item-api.service';
 
 export interface ServiceItem {
   id: number;
   key: string;
   name: string;
   price: number;
+  type?: string;
+  stockQuantity?: number;
+  status?: string;
   quantity?: number;
 }
 
 @Injectable({ providedIn: 'root' })
 export class AdditionalServiceService {
-  private readonly servicesSignal = signal<ServiceItem[]>([
-    { id: 1, key: 'water', name: '🥤 Nước ngọt/suối', price: 15000 },
-    { id: 2, key: 'ball', name: '🏸 Quả cầu lông', price: 25000 },
-    { id: 3, key: 'racket', name: '🎾 Thuê vợt', price: 50000 }
-  ]);
+  private readonly http = inject(HttpClient);
+  private readonly apiConfig = inject(ApiConfigService);
+  private readonly serviceItemApi = inject(ServiceItemApiService);
+
+  private readonly servicesSignal = signal<ServiceItem[]>([]);
 
   readonly services = this.servicesSignal.asReadonly();
-  private nextId = 4;
+  private nextId = 1;
+
+  constructor() {
+    this.fetchServices();
+  }
+
+  fetchServices(): void {
+    if (this.apiConfig.isMockMode()) return;
+    this.serviceItemApi.list().subscribe(items => {
+      this.servicesSignal.set(items.map((item, index) => ({
+        id: index + 1,
+        key: item.id,
+        name: item.name,
+        price: Number(item.price),
+        type: item.type,
+        stockQuantity: item.stockQuantity,
+        status: item.status
+      })));
+      this.nextId = items.length + 1;
+    });
+  }
 
   getServices(): ServiceItem[] {
     return [...this.servicesSignal()];
@@ -32,6 +62,20 @@ export class AdditionalServiceService {
       price
     };
     this.servicesSignal.update(list => [...list, newService]);
+    if (this.apiConfig.isMockMode()) return;
+
+    const headers = new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID() });
+    (this.http.post(API_ENDPOINTS.ADMIN.SERVICE_ITEMS, {
+      name,
+      type: 'DRINK',
+      price,
+      stockQuantity: 0,
+      status: 'ACTIVE'
+    }, { headers }) as Observable<ApiResponse<BackendServiceItem>>)
+      .pipe(catchError(() => of(null)))
+      .subscribe(response => {
+        if (response?.data) this.fetchServices();
+      });
   }
 
   updateService(id: number, name: string, price: number): void {
@@ -44,9 +88,29 @@ export class AdditionalServiceService {
       }
       return list;
     });
+    if (this.apiConfig.isMockMode()) return;
+    const existing = this.servicesSignal().find(item => item.id === id);
+    if (!existing?.key) return;
+    (this.http.put(API_ENDPOINTS.ADMIN.SERVICE_ITEMS + `/${existing.key}`, {
+      name,
+      type: existing.type || 'DRINK',
+      price,
+      stockQuantity: existing.stockQuantity || 0,
+      status: existing.status || 'ACTIVE'
+    }) as Observable<ApiResponse<BackendServiceItem>>)
+      .pipe(catchError(() => of(null)))
+      .subscribe(response => {
+        if (response?.data) this.fetchServices();
+      });
   }
 
   deleteService(id: number): void {
+    const existing = this.servicesSignal().find(item => item.id === id);
     this.servicesSignal.update(list => list.filter(s => s.id !== id));
+    if (this.apiConfig.isMockMode()) return;
+    if (!existing?.key) return;
+    (this.http.patch(API_ENDPOINTS.ADMIN.SERVICE_ITEM_STATUS(existing.key), { status: 'INACTIVE' }) as Observable<ApiResponse<BackendServiceItem>>)
+      .pipe(catchError(() => of(null)))
+      .subscribe(() => this.fetchServices());
   }
 }

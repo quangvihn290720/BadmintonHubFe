@@ -1,18 +1,18 @@
-import { Injectable, signal, computed, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { catchError, of } from 'rxjs';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Observable, catchError, map, of, tap } from 'rxjs';
 import { Customer } from '../models';
-import { MOCK_CUSTOMERS } from '../mock-data';
-import { ApiConfigService } from './api-config.service';
 import { API_ENDPOINTS } from '../constants/api-endpoints';
+import { ApiResponse } from '../models/api-response.model';
+import { BackendCustomer } from '../models/backend-api.model';
+import { ApiConfigService } from './api-config.service';
 
 @Injectable({ providedIn: 'root' })
 export class MockCustomerService {
   private readonly http = inject(HttpClient);
   private readonly apiConfig = inject(ApiConfigService);
 
-  private readonly customersSignal = signal<Customer[]>([...MOCK_CUSTOMERS]);
-  
+  private readonly customersSignal = signal<Customer[]>([]);
   readonly customers = this.customersSignal.asReadonly();
   readonly blacklistedCustomers = computed(() => this.customersSignal().filter(c => c.isBlacklisted));
 
@@ -20,20 +20,18 @@ export class MockCustomerService {
     this.fetchCustomers();
   }
 
-  fetchCustomers(): void {
-    if (this.apiConfig.isMockMode()) return;
+  fetchCustomers(keyword = ''): void {
+    this.listCustomers(keyword).subscribe();
+  }
 
-    this.http.get<Customer[]>(API_ENDPOINTS.CUSTOMERS.BASE)
-      .pipe(
-        catchError((err: any) => {
-          return of([] as Customer[]);
-        })
-      )
-      .subscribe((list: Customer[]) => {
-        if (list && list.length > 0) {
-          this.customersSignal.set(list);
-        }
-      });
+  listCustomers(keyword = ''): Observable<Customer[]> {
+    return (this.http.get(API_ENDPOINTS.CUSTOMERS.BASE, {
+      params: keyword ? { keyword } : {}
+    }) as Observable<ApiResponse<BackendCustomer[]>>).pipe(
+      map(response => (response.data || []).map((item, index) => this.toUiCustomer(item, index))),
+      tap(customers => this.customersSignal.set(customers)),
+      catchError(() => of([]))
+    );
   }
 
   getAllCustomers(): Customer[] {
@@ -52,12 +50,67 @@ export class MockCustomerService {
     return this.customersSignal().find(c => c.id === id);
   }
 
+  getBackendCustomerId(id: number | null | undefined): string | null {
+    if (!id) return null;
+    return this.findById(id)?.backendId || null;
+  }
+
   isBlacklisted(phone: string): { isBlacklisted: boolean; customer?: Customer; reason?: string } {
     const customer = this.findByPhone(phone);
-    if (customer && customer.isBlacklisted) {
+    if (customer?.isBlacklisted) {
       return { isBlacklisted: true, customer, reason: customer.blacklistReason };
     }
     return { isBlacklisted: false, customer };
+  }
+
+  findByPhoneBackend(phone: string): Observable<Customer | null> {
+    const local = this.findByPhone(phone);
+    if (local) {
+      return of(local);
+    }
+    return (this.http.get(`${API_ENDPOINTS.CUSTOMERS.BASE}/by-phone/${phone}`) as Observable<ApiResponse<BackendCustomer | null>>).pipe(
+      map(response => {
+        if (response.data) {
+          const uiCust = this.toUiCustomer(response.data, this.customersSignal().length);
+          this.customersSignal.update(list => [...list, uiCust]);
+          return uiCust;
+        }
+        return null;
+      }),
+      catchError(() => of(null))
+    );
+  }
+
+  addCustomerAsync(c: Omit<Customer, 'id' | 'totalBookings' | 'joinDate' | 'isBlacklisted' | 'points'>): Observable<Customer> {
+    const today = new Date().toISOString().split('T')[0];
+    const newCustomer: Customer = {
+      id: this.customersSignal().length > 0 ? Math.max(...this.customersSignal().map(cust => cust.id)) + 1 : 1,
+      totalBookings: 0,
+      joinDate: today,
+      isBlacklisted: false,
+      points: 0,
+      ...c
+    };
+
+    this.customersSignal.update(list => [...list, newCustomer]);
+
+    const headers = new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID() });
+    return (this.http.post(API_ENDPOINTS.CUSTOMERS.BASE, {
+      fullName: c.name,
+      phoneNumber: c.phone,
+      email: c.email,
+      status: 'ACTIVE'
+    }, { headers }) as Observable<ApiResponse<BackendCustomer>>).pipe(
+      map(response => {
+        const saved = this.toUiCustomer(response.data, newCustomer.id - 1);
+        const finalSaved = { ...saved, id: newCustomer.id };
+        this.customersSignal.update(list => list.map(item => item.id === newCustomer.id ? finalSaved : item));
+        return finalSaved;
+      }),
+      catchError(() => {
+        return of(newCustomer);
+      })
+    );
   }
 
   addCustomer(c: Omit<Customer, 'id' | 'totalBookings' | 'joinDate' | 'isBlacklisted' | 'points'>): Customer {
@@ -71,21 +124,20 @@ export class MockCustomerService {
       ...c
     };
 
-    if (this.apiConfig.isMockMode()) {
-      this.customersSignal.update(list => [...list, newCustomer]);
-    } else {
-      this.http.post<Customer>(API_ENDPOINTS.CUSTOMERS.BASE, newCustomer)
-        .pipe(
-          catchError((err: any) => {
-            return of(null);
-          })
-        )
-        .subscribe((res: any) => {
-          if (res) this.fetchCustomers();
-        });
-      // Optimistic update
-      this.customersSignal.update(list => [...list, newCustomer]);
-    }
+    this.customersSignal.update(list => [...list, newCustomer]);
+
+    const headers = new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID() });
+    (this.http.post(API_ENDPOINTS.CUSTOMERS.BASE, {
+      fullName: c.name,
+      phoneNumber: c.phone,
+      email: c.email,
+      status: 'ACTIVE'
+    }, { headers }) as Observable<ApiResponse<BackendCustomer>>).pipe(
+      map(response => this.toUiCustomer(response.data, newCustomer.id - 1)),
+      catchError(() => of(newCustomer))
+    ).subscribe(saved => {
+      this.customersSignal.update(list => list.map(item => item.id === newCustomer.id ? { ...saved, id: newCustomer.id } : item));
+    });
 
     return newCustomer;
   }
@@ -99,35 +151,25 @@ export class MockCustomerService {
         email: `${phone.replace(/\s+/g, '')}@badmintonhub.com`
       });
     }
-    
-    const pointsToAdd = Math.floor(totalPaid / 10000);
-    
-    this.customersSignal.update(list => {
-      const idx = list.findIndex(c => c.id === customer!.id);
-      if (idx !== -1) {
-        const copy = [...list];
-        const currentPoints = copy[idx].points || 0;
-        copy[idx] = {
-          ...copy[idx],
-          totalBookings: copy[idx].totalBookings + 1,
-          points: currentPoints + pointsToAdd
-        };
-        return copy;
-      }
-      return list;
-    });
 
-    if (!this.apiConfig.isMockMode()) {
-      const payload = { totalPaid, pointsToAdd };
-      this.http.post<any>(API_ENDPOINTS.CUSTOMERS.BOOKING(customer.id), payload)
-        .pipe(
-          catchError((err: any) => {
-            return of(null);
-          })
-        )
-        .subscribe((res: any) => {
-          this.fetchCustomers();
-        });
-    }
+    const pointsToAdd = Math.floor(totalPaid / 10000);
+    this.customersSignal.update(list => list.map(item => item.id === customer!.id
+      ? { ...item, totalBookings: item.totalBookings + 1, points: (item.points || 0) + pointsToAdd }
+      : item));
+  }
+
+  private toUiCustomer(item: BackendCustomer, index: number): Customer {
+    return {
+      id: index + 1,
+      backendId: item.id,
+      name: item.fullName,
+      phone: item.phoneNumber,
+      email: item.email || '',
+      isBlacklisted: item.status === 'BLACKLISTED',
+      blacklistReason: item.status === 'BLACKLISTED' ? 'Backend customer status is BLACKLISTED' : undefined,
+      totalBookings: Number(item.totalBookings || 0),
+      joinDate: item.createdAt?.slice(0, 10) || new Date().toISOString().split('T')[0],
+      points: 0
+    };
   }
 }

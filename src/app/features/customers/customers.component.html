@@ -37,6 +37,7 @@
         <tr>
           <th>ID</th>
           <th>Tên khách hàng</th>
+          <th>Hạng VIP</th>
           <th>Số điện thoại</th>
           <th>Email</th>
           <th>Số lần đặt</th>
@@ -52,6 +53,12 @@
         <tr class="clickable-row" (click)="openDetailsModal(c)">
           <td>#{{ c.id }}</td>
           <td><strong>{{ c.name }}</strong></td>
+          <td>
+            <span class="vip-badge" [class.vip-gold]="getVipTier(c.points) === 'Vàng'"
+              [class.vip-silver]="getVipTier(c.points) === 'Bạc'" [class.vip-bronze]="getVipTier(c.points) === 'Đồng'">
+              ⭐ {{ getVipTier(c.points) }}
+            </span>
+          </td>
           <td>{{ maskPhone(c.phone) }}</td>
           <td>{{ maskEmail(c.email) }}</td>
           <td>{{ c.totalBookings }}</td>
@@ -78,9 +85,15 @@
 
     <!-- Pagination controls -->
     <div class="pagination-container">
-      <button class="btn btn-secondary" [disabled]="currentPage() === 1" (click)="prevPage()">← Trước</button>
+      <button class="btn btn-secondary" [disabled]="currentPage() === 1" (click)="prevPage()"><span
+          class="material-symbols-outlined">
+          arrow_back
+        </span> Trước</button>
       <span class="page-info">Trang <strong>{{ currentPage() }}</strong> / {{ totalPages() }}</span>
-      <button class="btn btn-secondary" [disabled]="currentPage() === totalPages()" (click)="nextPage()">Sau →</button>
+      <button class="btn btn-secondary" [disabled]="currentPage() === totalPages()" (click)="nextPage()">Sau <span
+          class="material-symbols-outlined">
+          arrow_forward
+        </span></button>
     </div>
   </div>
 
@@ -99,7 +112,14 @@
             {{ cust.name.charAt(0) }}
           </div>
           <div class="profile-meta">
-            <h4>{{ cust.name }}</h4>
+            <h4 style="display: flex; align-items: center; gap: 8px;">
+              {{ cust.name }}
+              <span class="vip-badge" [class.vip-gold]="getVipTier(cust.points) === 'Vàng'"
+                [class.vip-silver]="getVipTier(cust.points) === 'Bạc'"
+                [class.vip-bronze]="getVipTier(cust.points) === 'Đồng'">
+                ⭐ {{ getVipTier(cust.points) }}
+              </span>
+            </h4>
             <p class="phone-num">📞 {{ cust.phone }}</p>
             <p class="email-text">✉️ {{ cust.email }}</p>
           </div>
@@ -107,10 +127,12 @@
 
         <!-- Loyalty Card & Stats Grid -->
         <div class="stats-grid">
-          <div class="stat-box points-card">
+          <div class="stat-box points-card" [class.card-gold]="getVipTier(cust.points) === 'Vàng'"
+            [class.card-silver]="getVipTier(cust.points) === 'Bạc'"
+            [class.card-bronze]="getVipTier(cust.points) === 'Đồng'">
             <span class="stat-label">⭐ Điểm tích lũy</span>
             <span class="stat-value text-primary">{{ cust.points || 0 }} điểm</span>
-            <span class="stat-desc">Tích lũy 1 điểm mỗi 10,000đ</span>
+            <span class="stat-desc">Hạng VIP: {{ getVipTier(cust.points) }} · Tích lũy 1 điểm mỗi 10,000đ</span>
           </div>
           <div class="stat-box">
             <span class="stat-label">🏸 Tổng số lượt đặt</span>

@@ -20,8 +20,9 @@ export const routes: Routes = [
       { path: 'payment', loadComponent: () => import('./features/payment/payment.component').then(m => m.PaymentComponent) },
       { path: 'customers', loadComponent: () => import('./features/customers/customers.component').then(m => m.CustomersComponent) },
       { path: 'pricing', loadComponent: () => import('./features/pricing/pricing.component').then(m => m.PricingComponent) },
+      { path: 'courts', loadComponent: () => import('./features/courts/courts.component').then(m => m.CourtsComponent), canActivate: [adminGuard] },
       { path: 'services', loadComponent: () => import('./features/services/services.component').then(m => m.ServicesComponent) },
-      { path: 'reports', loadComponent: () => import('./features/reports/reports.component').then(m => m.ReportsComponent) },
+      { path: 'reports', loadComponent: () => import('./features/reports/reports.component').then(m => m.ReportsComponent), canActivate: [adminGuard] },
       { path: 'staff', loadComponent: () => import('./features/staff/staff.component').then(m => m.StaffComponent), canActivate: [adminGuard] },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]

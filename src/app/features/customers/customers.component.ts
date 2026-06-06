@@ -3,7 +3,7 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
 import { MockCustomerService } from '../../core/services/mock-customer.service';
 import { MockBookingService } from '../../core/services/mock-booking.service';
 import { PricingService } from '../../core/services/pricing.service';
-import { Customer, Booking } from '../../core/models';
+import { Customer, Booking, getVipTier } from '../../core/models';
 
 @Component({
   selector: 'app-customers',
@@ -74,6 +74,10 @@ export class CustomersComponent {
   openDetailsModal(customer: Customer): void {
     this.selectedCustomer.set(customer);
     this.showDetailsModal.set(true);
+  }
+
+  getVipTier(points?: number): string {
+    return getVipTier(points);
   }
 
   formatCurrency(amount: number): string {

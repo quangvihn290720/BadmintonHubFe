@@ -1,17 +1,21 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Observable, from, of } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';
-import { MOCK_STAFF } from '../mock-data';
-import { ApiConfigService } from './api-config.service';
 import { API_ENDPOINTS } from '../constants/api-endpoints';
+import { ApiResponse } from '../models/api-response.model';
+import { AuthSession, BackendRole, LoginResponse } from '../models/auth.model';
+import { BackendEmployee } from '../models/backend-api.model';
+import { ApiConfigService } from './api-config.service';
 
 export interface StaffMember {
-  id: number;
+  id: string;
   name: string;
   username: string;
   role: 'staff' | 'admin';
+  backendRole?: BackendRole;
+  status?: string;
   password?: string;
 }
 
@@ -20,33 +24,23 @@ export class AuthService {
   private readonly router = inject(Router);
   private readonly http = inject(HttpClient);
   private readonly apiConfig = inject(ApiConfigService);
-  
   private readonly STORAGE_KEY = 'badmintonhub_auth';
 
-  private readonly staffListSignal = signal<StaffMember[]>([...MOCK_STAFF] as StaffMember[]);
+  private readonly staffListSignal = signal<StaffMember[]>([]);
   readonly staffList = this.staffListSignal.asReadonly();
-
-  readonly currentUser = signal<{ id: number; name: string; username: string; role: 'staff' | 'admin' } | null>(
-    localStorage.getItem(this.STORAGE_KEY) ? JSON.parse(localStorage.getItem(this.STORAGE_KEY)!) : null
-  );
+  readonly currentUser = signal<AuthSession | null>(this.readSession());
 
   constructor() {
     this.fetchStaff();
   }
 
   fetchStaff(): void {
-    if (this.apiConfig.isMockMode()) return;
-    
-    this.http.get<StaffMember[]>(API_ENDPOINTS.STAFF.BASE)
-      .pipe(
-        catchError((err: any) => {
-          return of([] as StaffMember[]);
-        })
-      )
-      .subscribe((list: StaffMember[]) => {
-        if (list && list.length > 0) {
-          this.staffListSignal.set(list);
-        }
+    if (this.apiConfig.isMockMode() || !this.hasAnyRole(['ADMIN', 'MANAGER'])) return;
+    (this.http.get(API_ENDPOINTS.STAFF.BASE) as Observable<ApiResponse<unknown[]>>)
+      .pipe(catchError(() => of({ success: false, code: 'ERROR', message: 'Error', data: [], timestamp: new Date().toISOString() })))
+      .subscribe(response => {
+        const employees = (response.data || []) as BackendEmployee[];
+        this.staffListSignal.set(employees.map(employee => this.toStaffMember(employee)));
       });
   }
 
@@ -55,98 +49,74 @@ export class AuthService {
   }
 
   addStaff(staff: Omit<StaffMember, 'id'>): void {
-    if (this.apiConfig.isMockMode()) {
-      this.staffListSignal.update(list => {
-        const id = list.length > 0 ? Math.max(...list.map(s => s.id)) + 1 : 1;
-        return [...list, { id, ...staff } as StaffMember];
-      });
-    } else {
-      this.http.post<StaffMember>(API_ENDPOINTS.STAFF.BASE, staff)
-        .pipe(
-          catchError((err: any) => {
-            return of(null);
-          })
-        )
-        .subscribe((res: any) => {
-          if (res) this.fetchStaff();
-        });
-    }
-  }
+    const local: StaffMember = { id: crypto.randomUUID(), ...staff };
+    this.staffListSignal.update(list => [...list, local]);
+    if (this.apiConfig.isMockMode()) return;
 
-  updateStaff(updated: Partial<StaffMember> & { id: number }): void {
-    if (this.apiConfig.isMockMode()) {
-      this.staffListSignal.update(list => {
-        const idx = list.findIndex(s => s.id === updated.id);
-        if (idx !== -1) {
-          const copy = [...list];
-          copy[idx] = { ...copy[idx], ...updated } as StaffMember;
-          return copy;
+    const headers = new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID() });
+    (this.http.post(API_ENDPOINTS.ADMIN.EMPLOYEES, {
+      fullName: staff.name,
+      username: staff.username,
+      password: staff.password || 'admin123',
+      role: staff.role === 'admin' ? 'ADMIN' : 'CASHIER',
+      status: 'ACTIVE'
+    }, { headers }) as Observable<ApiResponse<BackendEmployee>>)
+      .pipe(catchError(() => of(null)))
+      .subscribe(response => {
+        if (response?.data) {
+          const saved = this.toStaffMember(response.data);
+          this.staffListSignal.update(list => list.map(item => item.id === local.id ? saved : item));
         }
-        return list;
       });
-    } else {
-      this.http.put<StaffMember>(API_ENDPOINTS.STAFF.DETAIL(updated.id), updated)
-        .pipe(
-          catchError((err: any) => {
-            return of(null);
-          })
-        )
-        .subscribe((res: any) => {
-          if (res) this.fetchStaff();
-        });
-    }
   }
 
-  deleteStaff(id: number): void {
-    if (this.apiConfig.isMockMode()) {
-      this.staffListSignal.update(list => list.filter(s => s.id !== id));
-    } else {
-      this.http.delete<any>(API_ENDPOINTS.STAFF.DETAIL(id))
-        .pipe(
-          catchError((err: any) => {
-            return of(null);
-          })
-        )
-        .subscribe((res: any) => {
-          this.fetchStaff();
-        });
-    }
+  updateStaff(updated: Partial<StaffMember> & { id: string }): void {
+    this.staffListSignal.update(list => {
+      const idx = list.findIndex(s => s.id === updated.id);
+      if (idx === -1) return list;
+      const copy = [...list];
+      copy[idx] = { ...copy[idx], ...updated } as StaffMember;
+      return copy;
+    });
+    if (this.apiConfig.isMockMode()) return;
+    const existing = this.staffListSignal().find(s => s.id === updated.id);
+    if (!existing) return;
+    const role = updated.role === 'admin' ? 'ADMIN' : 'CASHIER';
+    (this.http.patch(API_ENDPOINTS.ADMIN.EMPLOYEE_ROLE(existing.id), { role }) as Observable<ApiResponse<BackendEmployee>>)
+      .pipe(catchError(() => of(null)))
+      .subscribe(() => this.fetchStaff());
+  }
+
+  deleteStaff(id: string): void {
+    this.staffListSignal.update(list => list.filter(s => s.id !== id));
+    if (this.apiConfig.isMockMode()) return;
+    (this.http.patch(API_ENDPOINTS.ADMIN.EMPLOYEE_STATUS(id), { status: 'INACTIVE' }) as Observable<ApiResponse<BackendEmployee>>)
+      .pipe(catchError(() => of(null)))
+      .subscribe();
   }
 
   login(username: string, password: string): Observable<{ success: boolean; message: string }> {
-    if (this.apiConfig.isMockMode()) {
-      const staff = this.staffListSignal().find(s => s.username === username && s.password === password);
-      if (staff) {
-        const authData = { id: staff.id, name: staff.name, username: staff.username, role: staff.role };
-        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(authData));
-        this.currentUser.set(authData);
-        return of({ success: true, message: 'Đăng nhập giả lập thành công' });
-      }
-      return of({ success: false, message: 'Tên đăng nhập hoặc mật khẩu giả lập không đúng' });
-    } else {
-      return this.http.post<any>(API_ENDPOINTS.AUTH.LOGIN, { username, password })
-        .pipe(
-          tap((res: any) => {
-            if (res && res.token) {
-              this.apiConfig.setToken(res.token);
-              const authData = {
-                id: res.user.id,
-                name: res.user.name,
-                username: res.user.username,
-                role: res.user.role
-              };
-              localStorage.setItem(this.STORAGE_KEY, JSON.stringify(authData));
-              this.currentUser.set(authData);
-              this.fetchStaff();
-            }
-          }),
-          map((res: any) => ({ success: true, message: 'Đăng nhập thành công' })),
-          catchError((err: any) => {
-            const msg = err.error?.message || 'Không thể kết nối đến Backend API port 4201.';
-            return of({ success: false, message: msg });
-          })
-        );
-    }
+    return (this.http.post(API_ENDPOINTS.AUTH.LOGIN, { username, password }) as Observable<ApiResponse<LoginResponse>>)
+      .pipe(
+        tap(response => {
+          if (!response.success || !response.data?.accessToken) return;
+          const data = response.data;
+          this.storeSession({
+            id: data.employeeId,
+            name: data.username,
+            username: data.username,
+            role: data.role === 'CASHIER' ? 'staff' : 'admin',
+            backendRole: data.role,
+            accessToken: data.accessToken,
+            expiresAt: Date.now() + data.expiresIn * 1000
+          });
+        }),
+        map(response => ({ success: response.success, message: response.message || 'Dang nhap thanh cong.' })),
+        catchError(err => of({
+          success: false,
+          message: err.error?.message || 'Khong the ket noi Backend API tai http://localhost:8080.'
+        }))
+      );
   }
 
   logout(): void {
@@ -157,16 +127,60 @@ export class AuthService {
   }
 
   isLoggedIn(): boolean {
-    return !!localStorage.getItem(this.STORAGE_KEY);
+    const session = this.readSession();
+    return !!session?.accessToken && session.expiresAt > Date.now();
   }
 
-  getCurrentStaff(): { id: number; name: string; username: string; role: string } | null {
-    const data = localStorage.getItem(this.STORAGE_KEY);
-    return data ? JSON.parse(data) : null;
+  getCurrentStaff(): AuthSession | null {
+    return this.readSession();
+  }
+
+  getCurrentSession(): AuthSession | null {
+    return this.readSession();
+  }
+
+  getCurrentToken(): string | null {
+    return this.apiConfig.token();
+  }
+
+  hasRole(role: BackendRole): boolean {
+    return this.readSession()?.backendRole === role;
+  }
+
+  hasAnyRole(roles: BackendRole[]): boolean {
+    const role = this.readSession()?.backendRole;
+    return !!role && roles.includes(role);
   }
 
   getStaffName(): string {
-    const staff = this.getCurrentStaff();
-    return staff ? staff.name : 'Nhân viên';
+    return this.readSession()?.name || 'Nhan vien';
+  }
+
+  private storeSession(session: AuthSession): void {
+    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(session));
+    this.apiConfig.setToken(session.accessToken);
+    this.currentUser.set(session);
+  }
+
+  private readSession(): AuthSession | null {
+    const data = localStorage.getItem(this.STORAGE_KEY);
+    if (!data) return null;
+    try {
+      return JSON.parse(data) as AuthSession;
+    } catch {
+      localStorage.removeItem(this.STORAGE_KEY);
+      return null;
+    }
+  }
+
+  private toStaffMember(employee: BackendEmployee): StaffMember {
+    return {
+      id: employee.id,
+      name: employee.fullName,
+      username: employee.username,
+      role: employee.role === 'CASHIER' ? 'staff' : 'admin',
+      backendRole: employee.role as BackendRole,
+      status: employee.status
+    };
   }
 }

@@ -8,16 +8,11 @@ export const adminGuard: CanActivateFn = () => {
   const router = inject(Router);
   const apiConfig = inject(ApiConfigService);
 
-  const currentUser = authService.currentUser();
-
-  if (currentUser && currentUser.role === 'admin') {
+  if (authService.hasAnyRole(['ADMIN', 'MANAGER'])) {
     return true;
   }
 
-  // 1. Notify user politely
-  apiConfig.triggerError('Quyền truy cập bị từ chối: Chỉ quản trị viên mới được phép vào phân hệ này.');
-
-  // 2. Redirect to dashboard safely
+  apiConfig.triggerError('Ban can quyen ADMIN hoac MANAGER de truy cap chuc nang nay.');
   router.navigate(['/dashboard']);
   return false;
 };

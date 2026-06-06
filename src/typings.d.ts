@@ -8,6 +8,7 @@ declare module '@angular/common/http' {
     get<T = any>(url: string, options?: any): any;
     post<T = any>(url: string, body: any, options?: any): any;
     put<T = any>(url: string, body: any, options?: any): any;
+    patch<T = any>(url: string, body: any, options?: any): any;
     delete<T = any>(url: string, options?: any): any;
   }
   export class HttpErrorResponse {

@@ -2,6 +2,7 @@ import { CourtType } from './court.model';
 
 export interface PricingRule {
   id: number;
+  backendId?: string;
   courtType: CourtType;
   timeStart: string;  // HH:mm
   timeEnd: string;    // HH:mm

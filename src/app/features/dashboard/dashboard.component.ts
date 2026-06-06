@@ -7,7 +7,7 @@ import { PricingService } from '../../core/services/pricing.service';
 import { MockCustomerService } from '../../core/services/mock-customer.service';
 import { AdditionalServiceService, ServiceItem } from '../../core/services/additional-service.service';
 import { BookingStatus, Court, Booking, PaymentMethod, TimeSlot } from '../../core/models';
-import { MOCK_COURTS } from '../../core/mock-data/courts.data';
+import { CourtApiService } from '../../core/services/court-api.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -17,14 +17,15 @@ import { MOCK_COURTS } from '../../core/mock-data/courts.data';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class DashboardComponent implements OnInit {
-  private readonly bookingService = inject(MockBookingService);
+  public readonly bookingService = inject(MockBookingService);
   private readonly bookingState = inject(BookingStateService);
   private readonly pricingService = inject(PricingService);
   private readonly customerService = inject(MockCustomerService);
   private readonly additionalService = inject(AdditionalServiceService);
+  private readonly courtApi = inject(CourtApiService);
   private readonly router = inject(Router);
 
-  readonly courts: Court[] = MOCK_COURTS;
+  readonly courts = this.courtApi.courts;
   readonly hourLabels = ['06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00'];
   readonly hourHeight = 90; // pixels
 
@@ -33,6 +34,18 @@ export class DashboardComponent implements OnInit {
   readonly simulatedMinutes = signal<number>(720);
   readonly showDetailModal = signal<boolean>(false);
   readonly currentWeekStart = signal<Date>(new Date());
+
+  // Toast Notification Signals
+  readonly toastMessage = signal<string>('');
+  readonly toastType = signal<'success' | 'error'>('success');
+
+  showToast(message: string, type: 'success' | 'error' = 'success'): void {
+    this.toastMessage.set(message);
+    this.toastType.set(type);
+    setTimeout(() => {
+      this.toastMessage.set('');
+    }, 3000);
+  }
 
   // Computed week date tabs for the calendar quick switcher strip (next 7 days from start)
   readonly dateTabs = computed(() => {
@@ -65,7 +78,6 @@ export class DashboardComponent implements OnInit {
 
   // Reactive Stats Computed from selectedDate and simulatedTime and booking signal
   readonly stats = computed(() => {
-    // Read the bookings signal to trigger evaluation when a booking is added/edited/completed
     this.bookingService.bookings();
     return this.bookingService.getTodayStats(this.selectedDate(), this.simulatedTime());
   });
@@ -117,7 +129,7 @@ export class DashboardComponent implements OnInit {
     
     let overtimeMinutes = 0;
     let overtimeAmount = 0;
-    
+
     if (simTime > schedEnd) {
       const rawOvertime = simTime - schedEnd;
       const hours = Math.floor(rawOvertime / 60);
@@ -163,6 +175,7 @@ export class DashboardComponent implements OnInit {
     }, 150);
     const dbServices = this.additionalService.getServices();
     this.serviceItems.set(dbServices.map(s => ({ ...s, quantity: 0 })));
+    this.bookingService.fetchSchedule(this.selectedDate()).subscribe();
   }
 
   syncClockToSim(): void {
@@ -178,6 +191,7 @@ export class DashboardComponent implements OnInit {
   onDateChange(event: Event): void {
     const val = (event.target as HTMLInputElement).value;
     this.selectedDate.set(val);
+    this.bookingService.fetchSchedule(val).subscribe();
     const d = new Date(val + 'T00:00:00');
     this.currentWeekStart.set(d);
   }
@@ -201,7 +215,9 @@ export class DashboardComponent implements OnInit {
   jumpToToday(): void {
     const today = new Date();
     this.currentWeekStart.set(new Date());
-    this.selectedDate.set(today.toISOString().split('T')[0]);
+    const todayStr = today.toISOString().split('T')[0];
+    this.selectedDate.set(todayStr);
+    this.bookingService.fetchSchedule(todayStr).subscribe();
     setTimeout(() => {
       this.scrollToCurrentTime();
     }, 50);
@@ -209,6 +225,7 @@ export class DashboardComponent implements OnInit {
 
   selectQuickDate(dateStr: string): void {
     this.selectedDate.set(dateStr);
+    this.bookingService.fetchSchedule(dateStr).subscribe();
     setTimeout(() => {
       this.scrollToCurrentTime();
     }, 50);
@@ -311,7 +328,7 @@ export class DashboardComponent implements OnInit {
     if (booking) {
       const services = this.serviceItems()
         .filter(item => (item.quantity || 0) > 0)
-        .map(item => ({ name: item.name, price: item.price, quantity: item.quantity || 0 }));
+        .map(item => ({ key: item.key, name: item.name, price: item.price, quantity: item.quantity || 0 }));
       
       const grandTotal = this.totalBill();
       this.bookingService.checkOut(
@@ -385,7 +402,6 @@ export class DashboardComponent implements OnInit {
     const offsetMin = m - 6 * 60;
     return offsetMin * (this.hourHeight / 60);
   }
-
   scrollToCurrentTime(): void {
     const wrapper = document.querySelector('.schedule-grid-wrapper');
     if (wrapper) {
@@ -423,7 +439,7 @@ export class DashboardComponent implements OnInit {
     if (booking) {
       this.bookingService.cancelBooking(booking.id);
       this.showCancelConfirmModal.set(false);
-      alert('Đã hủy lịch đặt sân thành công!');
+      this.showToast('Đã hủy lịch đặt sân thành công!', 'success');
     }
   }
 
@@ -492,7 +508,7 @@ export class DashboardComponent implements OnInit {
     const start = this.rescheduleStart();
     const end = this.rescheduleEnd();
 
-    const court = this.courts.find(c => c.id === courtId);
+    const court = this.courts().find(c => c.id === courtId);
     const courtName = court ? court.name : booking.courtName;
 
     // Validation: start time must be before end time
@@ -502,20 +518,20 @@ export class DashboardComponent implements OnInit {
     };
 
     if (toMin(start) >= toMin(end)) {
-      alert('Thời gian bắt đầu phải trước thời gian kết thúc!');
+      this.showToast('Thời gian bắt đầu phải trước thời gian kết thúc!', 'error');
       return;
     }
 
     // Conflict check
     const conflictResult = this.bookingService.checkConflictForEdit(booking.id, courtId, date, start, end);
     if (conflictResult.hasConflict) {
-      alert(conflictResult.message);
+      this.showToast(conflictResult.message, 'error');
       return;
     }
 
     // Update schedule
     this.bookingService.updateBookingSchedule(booking.id, courtId, courtName, date, start, end);
-    alert('Thay đổi lịch đặt sân thành công!');
+    this.showToast('Thay đổi lịch đặt sân thành công!', 'success');
     this.showRescheduleModal.set(false);
   }
 
@@ -527,4 +543,3 @@ export class DashboardComponent implements OnInit {
     return `${newH.toString().padStart(2, '0')}:${newM.toString().padStart(2, '0')}`;
   }
 }
-

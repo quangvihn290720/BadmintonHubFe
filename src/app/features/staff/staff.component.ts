@@ -1,10 +1,11 @@
 import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService, StaffMember } from '../../core/services/auth.service';
+import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 
 @Component({
   selector: 'app-staff',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, ConfirmDialogComponent],
   templateUrl: './staff.component.html',
   styleUrl: './staff.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -16,6 +17,12 @@ export class StaffComponent {
   readonly staffList = this.authService.staffList;
   readonly isAdmin = computed(() => this.authService.currentUser()?.role === 'admin');
   
+  // Confirmation Dialog Signals
+  readonly showConfirmDialog = signal<boolean>(false);
+  readonly confirmDialogTitle = signal<string>('');
+  readonly confirmDialogMessage = signal<string>('');
+  readonly confirmDialogActions = signal<Array<{ label: string; type: 'primary' | 'danger' | 'secondary'; handler: () => void }>>([]);
+
   // Search & Pagination Signals
   readonly searchQuery = signal<string>('');
   readonly roleFilter = signal<'all' | 'admin' | 'staff'>('all');
@@ -25,7 +32,7 @@ export class StaffComponent {
   readonly showModal = signal<boolean>(false);
   readonly isEdit = signal<boolean>(false);
   readonly submitted = signal<boolean>(false);
-  readonly selectedStaffId = signal<number | null>(null);
+  readonly selectedStaffId = signal<string | null>(null);
 
   // Profile Details Modal
   readonly selectedStaff = signal<StaffMember | null>(null);
@@ -113,11 +120,24 @@ export class StaffComponent {
     this.showDetailsModal.set(true);
   }
 
-  deleteStaff(id: number): void {
-    if (confirm('Xác nhận xóa tài khoản nhân viên này?')) {
-      this.authService.deleteStaff(id);
-      this.currentPage.set(1);
-    }
+  deleteStaff(id: string): void {
+    const member = this.staffList().find(s => s.id === id);
+    const name = member ? member.name : '';
+
+    this.confirmDialogTitle.set('Xác nhận xóa');
+    this.confirmDialogMessage.set(`Bạn có chắc chắn muốn xóa tài khoản nhân viên "${name}"? Hành động này không thể hoàn tác.`);
+    this.confirmDialogActions.set([
+      {
+        label: 'Xác nhận xóa',
+        type: 'danger',
+        handler: () => {
+          this.showConfirmDialog.set(false);
+          this.authService.deleteStaff(id);
+          this.currentPage.set(1);
+        }
+      }
+    ]);
+    this.showConfirmDialog.set(true);
   }
 
   onSubmit(): void {

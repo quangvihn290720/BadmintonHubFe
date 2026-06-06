@@ -1,7 +1,8 @@
 import { Component, ChangeDetectionStrategy, inject, computed, signal } from '@angular/core';
 import { StatusBadgeComponent } from '../../shared/components/status-badge/status-badge.component';
 import { MockBookingService } from '../../core/services/mock-booking.service';
-import { BookingStatus, Booking } from '../../core/models';
+import { MockCustomerService } from '../../core/services/mock-customer.service';
+import { BookingStatus, Booking, PaymentMethod } from '../../core/models';
 
 @Component({
   selector: 'app-payment',
@@ -12,9 +13,10 @@ import { BookingStatus, Booking } from '../../core/models';
 })
 export class PaymentComponent {
   private readonly bookingService = inject(MockBookingService);
+  private readonly customerService = inject(MockCustomerService);
 
   readonly payments = computed(() => {
-    const bookings = this.bookingService.bookings().filter(b => b.status !== BookingStatus.Completed && b.status !== BookingStatus.Cancelled);
+    const bookings = this.bookingService.bookings().filter(b => b.status !== BookingStatus.Cancelled);
     return bookings.map(b => {
       let status: 'paid' | 'pending' | 'partial' = 'pending';
       if (b.status === BookingStatus.Completed) {
@@ -52,6 +54,7 @@ export class PaymentComponent {
   readonly pageSize = signal<number>(5);
   readonly selectedPaymentId = signal<number | null>(null);
   readonly showDetailModal = signal<boolean>(false);
+  readonly checkoutPaymentMethod = signal<PaymentMethod>(PaymentMethod.Cash);
 
   readonly filteredPayments = computed(() => {
     const query = this.searchQuery().toLowerCase().trim();
@@ -128,6 +131,34 @@ export class PaymentComponent {
 
   formatCurrency(amount: number): string {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+  }
+
+  setPaymentMethod(method: string): void {
+    if (method === 'cash') this.checkoutPaymentMethod.set(PaymentMethod.Cash);
+    if (method === 'bank_transfer') this.checkoutPaymentMethod.set(PaymentMethod.BankTransfer);
+    if (method === 'momo_qr') this.checkoutPaymentMethod.set(PaymentMethod.MomoQR);
+  }
+
+  confirmCheckout(booking: Booking): void {
+    const pm = this.checkoutPaymentMethod();
+    const services = booking.additionalServices || [];
+    const otMin = booking.overtimeMinutes || 0;
+    const otAmt = booking.overtimeAmount || 0;
+    const grandTotal = this.getGrandTotal(booking);
+    const checkoutAmt = grandTotal - booking.deposit;
+    const timeStr = booking.checkoutTime || new Date().toTimeString().slice(0, 5); // default to current time HH:MM
+
+    this.bookingService.checkOut(
+      booking.id,
+      services,
+      otMin,
+      otAmt,
+      checkoutAmt,
+      pm,
+      timeStr
+    );
+    this.customerService.addCompletedBooking(booking.customerPhone, booking.customerName, grandTotal);
+    this.showDetailModal.set(false);
   }
 
   getStatusLabel(status: string): string {

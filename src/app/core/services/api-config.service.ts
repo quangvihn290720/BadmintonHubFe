@@ -1,25 +1,27 @@
 import { Injectable, signal } from '@angular/core';
 import { HttpHeaders } from '@angular/common/http';
+import { environment } from '../../../environments/environment';
+
+interface RuntimeConfig {
+  apiBaseUrl?: string;
+}
 
 @Injectable({ providedIn: 'root' })
 export class ApiConfigService {
-  private readonly MOCK_KEY = 'badmintonhub_mock_mode';
   private readonly TOKEN_KEY = 'badmintonhub_token';
+  private readonly runtimeConfig = ((window as unknown as { __BADMINTONHUB_CONFIG__?: RuntimeConfig }).__BADMINTONHUB_CONFIG__) || {};
+  private readonly apiBaseUrl = this.normalizeApiBaseUrl(this.runtimeConfig.apiBaseUrl || environment.apiBaseUrl);
+  private readonly backendBaseUrl = this.apiBaseUrl.replace(/\/api\/v1\/?$/, '');
 
-  // Signals
-  readonly isMockMode = signal<boolean>(
-    localStorage.getItem(this.MOCK_KEY) === 'false' ? false : true
-  );
-  readonly backendUrl = signal<string>('http://localhost:4201/api');
+  readonly isMockMode = signal<boolean>(false);
+  readonly backendUrl = signal<string>(this.apiBaseUrl);
+  readonly backendBase = signal<string>(this.backendBaseUrl);
   readonly token = signal<string | null>(localStorage.getItem(this.TOKEN_KEY));
   readonly httpError = signal<string | null>(null);
 
   toggleMockMode(): void {
-    const nextVal = !this.isMockMode();
-    this.isMockMode.set(nextVal);
-    localStorage.setItem(this.MOCK_KEY, nextVal.toString());
-    // Auto reload to reload data and trigger service fetch
-    window.location.reload();
+    this.isMockMode.set(false);
+    localStorage.removeItem('badmintonhub_mock_mode');
   }
 
   setToken(t: string | null): void {
@@ -43,12 +45,18 @@ export class ApiConfigService {
 
   getHeaders(): HttpHeaders {
     let headers = new HttpHeaders({
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'X-Request-Id': crypto.randomUUID()
     });
     const t = this.token();
     if (t) {
       headers = headers.set('Authorization', `Bearer ${t}`);
     }
     return headers;
+  }
+
+  private normalizeApiBaseUrl(value: string): string {
+    const trimmed = value.replace(/\/$/, '');
+    return trimmed.endsWith('/api/v1') ? trimmed : `${trimmed}/api/v1`;
   }
 }

@@ -1141,3 +1141,49 @@
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
   }
 }
+
+/* Toast Notification */
+.toast-notification {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--border-color);
+  animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(120%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.toast-success {
+  border-left: 5px solid var(--color-success);
+  .toast-icon {
+    color: var(--color-success);
+  }
+}
+
+.toast-error {
+  border-left: 5px solid var(--color-error);
+  .toast-icon {
+    color: var(--color-error);
+  }
+}
+
+.toast-icon {
+  font-size: 18px;
+}
+
+.toast-text {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}

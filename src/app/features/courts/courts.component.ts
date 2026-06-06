@@ -2,10 +2,11 @@ import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@a
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { BackendCourt } from '../../core/models/backend-api.model';
 import { CourtApiService } from '../../core/services/court-api.service';
+import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 
 @Component({
   selector: 'app-courts',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, ConfirmDialogComponent],
   templateUrl: './courts.component.html',
   styleUrl: './courts.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -22,6 +23,13 @@ export class CourtsComponent {
   readonly submitted = signal<boolean>(false);
   readonly selectedCourt = signal<BackendCourt | null>(null);
   readonly error = signal<string | null>(null);
+
+  // Confirmation Dialog Signals
+  readonly showConfirmDialog = signal<boolean>(false);
+  readonly confirmDialogTitle = signal<string>('');
+  readonly confirmDialogMessage = signal<string>('');
+  readonly confirmDialogType = signal<'info' | 'warning' | 'error'>('info');
+  readonly confirmDialogActions = signal<Array<{ label: string; type: 'primary' | 'danger' | 'secondary'; handler: () => void }>>([]);
 
   readonly courtForm = this.fb.group({
     code: ['', [Validators.required]],
@@ -47,7 +55,7 @@ export class CourtsComponent {
   reload(): void {
     this.error.set(null);
     this.courtApi.loadAdminCourts().subscribe({
-      error: err => this.error.set(err.error?.message || 'Khong tai duoc danh sach san.')
+      error: err => this.error.set(err.error?.message || 'Không tải được danh sách sân.')
     });
   }
 
@@ -98,15 +106,33 @@ export class CourtsComponent {
         this.showModal.set(false);
         this.reload();
       },
-      error: err => this.error.set(err.error?.message || 'Khong luu duoc san.')
+      error: err => this.error.set(err.error?.message || 'Không lưu được sân.')
     });
   }
 
   changeStatus(court: BackendCourt, status: string): void {
+    const statusLabel = status === 'AVAILABLE' ? 'Hoạt động' : status === 'MAINTENANCE' ? 'Bảo trì' : 'Ngừng hoạt động';
+    this.confirmDialogTitle.set('Xác nhận đổi trạng thái');
+    this.confirmDialogMessage.set(`Bạn có chắc chắn muốn thay đổi trạng thái của sân ${court.code} sang "${statusLabel}"?`);
+    this.confirmDialogType.set(status === 'INACTIVE' ? 'warning' : 'info');
+    this.confirmDialogActions.set([
+      {
+        label: 'Xác nhận',
+        type: status === 'INACTIVE' ? 'danger' : 'primary',
+        handler: () => {
+          this.showConfirmDialog.set(false);
+          this.executeChangeStatus(court, status);
+        }
+      }
+    ]);
+    this.showConfirmDialog.set(true);
+  }
+
+  private executeChangeStatus(court: BackendCourt, status: string): void {
     this.error.set(null);
     this.courtApi.updateCourtStatus(court.id, status).subscribe({
       next: () => this.reload(),
-      error: err => this.error.set(err.error?.message || 'Khong cap nhat duoc trang thai san.')
+      error: err => this.error.set(err.error?.message || 'Không cập nhật được trạng thái sân.')
     });
   }
 

@@ -1,6 +1,5 @@
-import { Component, EventEmitter, OnInit, OnDestroy, inject, output, ChangeDetectionStrategy, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, output, ChangeDetectionStrategy, signal } from '@angular/core';
 import { AuthService } from '../../core/services/auth.service';
-import { ApiConfigService } from '../../core/services/api-config.service';
 
 @Component({
   selector: 'app-topbar',
@@ -13,21 +12,19 @@ import { ApiConfigService } from '../../core/services/api-config.service';
           </svg>
         </button>
         <h1 class="page-title">BadmintonHub</h1>
-        <div class="clock-display">🕒 {{ currentTime() }}</div>
+        <div class="clock-display">{{ currentTime() }}</div>
       </div>
       <div class="topbar-right">
-        <!-- API Mode Switcher Badge Toggle -->
-        <div class="api-switcher" (click)="toggleApiMode()" title="Bấm để chuyển đổi Offline Giả lập / Online API Backend">
-          <span class="switcher-badge" [class.online]="!isMockMode()">
-            {{ isMockMode() ? '🧪 Offline Giả lập' : '🌐 Online API :4201' }}
-          </span>
+        <div class="api-switcher" title="Backend API configured">
+          <span class="switcher-badge online">API</span>
         </div>
-
         <div class="staff-info">
           <div class="staff-avatar">{{ staffInitial }}</div>
           <div class="staff-details">
             <span class="staff-name">{{ staffName }}</span>
-            <span class="staff-role">Nhân viên</span>
+            <span class="staff-role" [style.color]="currentUser()?.role === 'admin' ? 'var(--color-primary)' : 'var(--text-secondary)'" [style.font-weight]="currentUser()?.role === 'admin' ? '700' : 'normal'">
+              {{ currentUser()?.role === 'admin' ? '🛡️ Quản trị viên' : 'Nhân viên' }}
+            </span>
           </div>
         </div>
         <button class="logout-btn" (click)="logout()">
@@ -53,26 +50,18 @@ import { ApiConfigService } from '../../core/services/api-config.service';
       cursor: pointer; padding: 4px; border-radius: 6px;
     }
     .menu-toggle:hover { background: var(--bg-secondary); }
-    .page-title { font-size: 20px; font-weight: 700; color: var(--color-dark); letter-spacing: -0.5px; }
+    .page-title { font-size: 20px; font-weight: 700; color: var(--color-dark); letter-spacing: 0; }
     .clock-display {
       font-size: 14px; font-weight: 700; color: var(--color-primary);
       background: rgba(37, 99, 235, 0.08); padding: 4px 10px; border-radius: 6px;
-      font-family: 'Courier New', Courier, monospace; letter-spacing: 0.5px;
+      font-family: 'Courier New', Courier, monospace; letter-spacing: 0;
     }
     .topbar-right { display: flex; align-items: center; gap: 16px; }
-    .api-switcher {
-      cursor: pointer; display: flex; align-items: center;
-      transition: all 0.2s;
-    }
+    .api-switcher { display: flex; align-items: center; }
     .switcher-badge {
       font-size: 12px; font-weight: 700; padding: 6px 12px; border-radius: 20px;
       background: #f1f5f9; color: #475569; border: 1.5px solid #cbd5e1;
-      display: inline-flex; align-items: center; gap: 4px;
-      transition: all 0.2s; user-select: none;
-    }
-    .switcher-badge:hover {
-      transform: scale(1.02);
-      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+      display: inline-flex; align-items: center; gap: 4px; user-select: none;
     }
     .switcher-badge.online {
       background: #2563eb14; color: #2563eb; border-color: #2563eb3b;
@@ -96,9 +85,7 @@ import { ApiConfigService } from '../../core/services/api-config.service';
       color: var(--text-secondary); cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s;
     }
     .logout-btn:hover { background: var(--color-error); color: white; border-color: var(--color-error); }
-    @media (max-width: 900px) {
-      .api-switcher { display: none; }
-    }
+    @media (max-width: 900px) { .api-switcher { display: none; } }
     @media (max-width: 768px) {
       .staff-details { display: none; }
       .logout-text { display: none; }
@@ -108,15 +95,13 @@ import { ApiConfigService } from '../../core/services/api-config.service';
 })
 export class TopbarComponent implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
-  private readonly apiConfig = inject(ApiConfigService);
-  
+
   toggleSidebar = output<void>();
   staffName: string;
   staffInitial: string;
+  readonly currentUser = this.authService.currentUser;
   currentTime = signal<string>('');
-  private timerId: any;
-
-  readonly isMockMode = this.apiConfig.isMockMode;
+  private timerId: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
     this.staffName = this.authService.getStaffName();
@@ -138,10 +123,6 @@ export class TopbarComponent implements OnInit, OnDestroy {
     const mins = now.getMinutes().toString().padStart(2, '0');
     const secs = now.getSeconds().toString().padStart(2, '0');
     this.currentTime.set(`${hours}:${mins}:${secs}`);
-  }
-
-  toggleApiMode(): void {
-    this.apiConfig.toggleMockMode();
   }
 
   logout(): void {

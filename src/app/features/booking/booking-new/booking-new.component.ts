@@ -2,12 +2,14 @@ import { Component, OnInit, ChangeDetectionStrategy, inject, signal } from '@ang
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
+import { of } from 'rxjs';
+import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 import { BookingStateService } from '../../../core/services/booking-state.service';
 import { MockBookingService, ConflictResult } from '../../../core/services/mock-booking.service';
 import { MockCustomerService } from '../../../core/services/mock-customer.service';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
-import { MOCK_COURTS } from '../../../core/mock-data/courts.data';
 import { Court, Customer } from '../../../core/models';
+import { CourtApiService } from '../../../core/services/court-api.service';
 
 interface TimeSlot {
   id: number;
@@ -28,6 +30,7 @@ export class BookingNewComponent implements OnInit {
   private readonly bookingState = inject(BookingStateService);
   private readonly bookingService = inject(MockBookingService);
   private readonly customerService = inject(MockCustomerService);
+  private readonly courtApi = inject(CourtApiService);
 
   readonly bookingForm = this.fb.group({
     date: ['', [Validators.required]],
@@ -35,13 +38,13 @@ export class BookingNewComponent implements OnInit {
     courtId: ['', [Validators.required]],
     startTime: ['', [Validators.required]],
     endTime: ['', [Validators.required]],
-    customerPhone: ['', [Validators.required, Validators.pattern(/^[0-9]+$/)]],
+    customerPhone: ['', [Validators.required, Validators.pattern(/^0[0-9]{9}$/)]],
     customerName: ['', [Validators.required]],
     note: ['']
   });
 
-  readonly allCourts: Court[] = MOCK_COURTS;
-  readonly filteredCourts = signal<Court[]>(MOCK_COURTS);
+  allCourts: Court[] = [];
+  readonly filteredCourts = signal<Court[]>([]);
   readonly timeSlots = signal<TimeSlot[]>([]);
   readonly endTimeSlots = signal<TimeSlot[]>([]);
 
@@ -51,6 +54,7 @@ export class BookingNewComponent implements OnInit {
   readonly foundCustomer = signal<Customer | null>(null);
   readonly isBlacklisted = signal<boolean>(false);
   readonly showRefuseDialog = signal<boolean>(false);
+  readonly showResultModal = signal<boolean>(false);
 
   readonly refuseDialogActions = [{
     label: 'Xác nhận từ chối',
@@ -68,18 +72,25 @@ export class BookingNewComponent implements OnInit {
 
     // Auto lookup for customer name when phone is typed/changed
     this.bookingForm.controls.customerPhone.valueChanges
-      .pipe(takeUntilDestroyed())
-      .subscribe(phone => {
-        if (phone && phone.length >= 10) {
-          const r = this.customerService.isBlacklisted(phone);
-          if (r.customer) {
-            this.foundCustomer.set(r.customer);
-            this.isBlacklisted.set(r.isBlacklisted);
-            this.bookingForm.patchValue({ customerName: r.customer.name }, { emitEvent: false });
+      .pipe(
+        takeUntilDestroyed(),
+        debounceTime(300),
+        distinctUntilChanged(),
+        switchMap(phone => {
+          if (phone && phone.length >= 10) {
+            this.isChecking.set(true);
+            return this.customerService.findByPhoneBackend(phone);
           } else {
-            this.foundCustomer.set(null);
-            this.isBlacklisted.set(false);
+            return of(null);
           }
+        })
+      )
+      .subscribe(customer => {
+        this.isChecking.set(false);
+        if (customer) {
+          this.foundCustomer.set(customer);
+          this.isBlacklisted.set(customer.isBlacklisted);
+          this.bookingForm.patchValue({ customerName: customer.name }, { emitEvent: false });
         } else {
           this.foundCustomer.set(null);
           this.isBlacklisted.set(false);
@@ -97,6 +108,13 @@ export class BookingNewComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.courtApi.loadCourts().subscribe(courts => {
+      if (courts.length) {
+        this.allCourts = courts;
+        this.onCourtTypeChange();
+      }
+    });
+
     const state = this.bookingState.state();
     const today = new Date().toISOString().split('T')[0];
     
@@ -205,6 +223,7 @@ export class BookingNewComponent implements OnInit {
     const todayStr = new Date().toISOString().split('T')[0];
     if (f.date < todayStr) {
       this.checkResult.set({ hasConflict: true, message: 'Lỗi: Không thể đặt sân trong quá khứ! Vui lòng chọn ngày hôm nay hoặc tương lai.' });
+      this.showResultModal.set(true);
       this.isChecking.set(false);
       return;
     }
@@ -216,6 +235,7 @@ export class BookingNewComponent implements OnInit {
       const startMin = sh * 60 + sm;
       if (startMin < currentMin) {
         this.checkResult.set({ hasConflict: true, message: 'Lỗi: Giờ bắt đầu đã trôi qua! Vui lòng chọn khung giờ hiện tại hoặc tương lai.' });
+        this.showResultModal.set(true);
         this.isChecking.set(false);
         return;
       }
@@ -224,6 +244,7 @@ export class BookingNewComponent implements OnInit {
     setTimeout(() => {
       const res = this.bookingService.checkConflict(Number(f.courtId), f.date, f.startTime, f.endTime);
       this.checkResult.set(res);
+      this.showResultModal.set(true);
       
       if (!res.hasConflict) {
         const r = this.customerService.isBlacklisted(f.customerPhone);
@@ -239,18 +260,30 @@ export class BookingNewComponent implements OnInit {
     }, 600);
   }
 
+  closeResultModal(): void {
+    this.showResultModal.set(false);
+  }
+
   onContinue(): void {
     const f = this.bookingForm.getRawValue();
     let customer = this.foundCustomer();
     if (!customer && f.customerPhone && f.customerName) {
-      // Auto register the new customer to link them!
-      customer = this.customerService.addCustomer({
+      this.isChecking.set(true);
+      this.customerService.addCustomerAsync({
         name: f.customerName,
         phone: f.customerPhone,
         email: `${f.customerPhone.replace(/\s+/g, '')}@badmintonhub.com`
+      }).subscribe(savedCustomer => {
+        this.isChecking.set(false);
+        this.foundCustomer.set(savedCustomer);
+        this.navigateToConfirm(savedCustomer, f);
       });
-      this.foundCustomer.set(customer);
+    } else {
+      this.navigateToConfirm(customer, f);
     }
+  }
+
+  private navigateToConfirm(customer: Customer | null, f: any): void {
     const court = this.allCourts.find(c => c.id === Number(f.courtId));
     this.bookingState.setPartial({
       date: f.date,
@@ -278,13 +311,22 @@ export class BookingNewComponent implements OnInit {
     const f = this.bookingForm.getRawValue();
     let customer = this.foundCustomer();
     if (!customer && f.customerPhone && f.customerName) {
-      customer = this.customerService.addCustomer({
+      this.isChecking.set(true);
+      this.customerService.addCustomerAsync({
         name: f.customerName,
         phone: f.customerPhone,
         email: `${f.customerPhone.replace(/\s+/g, '')}@badmintonhub.com`
+      }).subscribe(savedCustomer => {
+        this.isChecking.set(false);
+        this.foundCustomer.set(savedCustomer);
+        this.navigateToConfirmBlacklist(savedCustomer, f);
       });
-      this.foundCustomer.set(customer);
+    } else {
+      this.navigateToConfirmBlacklist(customer, f);
     }
+  }
+
+  private navigateToConfirmBlacklist(customer: Customer | null, f: any): void {
     const court = this.allCourts.find(c => c.id === Number(f.courtId));
     this.bookingState.setPartial({
       date: f.date,

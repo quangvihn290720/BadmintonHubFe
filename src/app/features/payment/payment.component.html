@@ -33,6 +33,7 @@
           <option value="all">Tất cả hóa đơn</option>
           <option value="partial">Một phần (Đã cọc)</option>
           <option value="pending">Chờ thanh toán</option>
+          <option value="paid">Đã thanh toán</option>
         </select>
       </div>
       <div class="select-group">
@@ -53,6 +54,7 @@
           <th>Mã booking</th>
           <th>Khách hàng</th>
           <th>Sân</th>
+          <th>Ngày</th>
           <th>Tổng tiền</th>
           <th>Đã cọc</th>
           <th>Còn lại</th>
@@ -67,6 +69,7 @@
           <td><span class="code">{{ p.bookingCode }}</span></td>
           <td>{{ p.customerName }}</td>
           <td>{{ p.courtName }}</td>
+          <td>{{ p.date }}</td>
           <td>{{ formatCurrency(p.totalAmount) }}</td>
           <td>{{ formatCurrency(p.deposit) }}</td>
           <td><strong>{{ formatCurrency(p.remaining) }}</strong></td>
@@ -77,7 +80,7 @@
         </tr>
         } @empty {
         <tr>
-          <td colspan="9" class="empty-text">
+          <td colspan="10" class="empty-text">
             <span class="empty-icon">📭</span>
             Không tìm thấy giao dịch thanh toán nào phù hợp.
           </td>
@@ -88,9 +91,15 @@
 
     <!-- Pagination controls -->
     <div class="pagination-container">
-      <button class="btn btn-secondary" [disabled]="currentPage() === 1" (click)="prevPage()">← Trước</button>
+      <button class="btn btn-secondary" [disabled]="currentPage() === 1" (click)="prevPage()"><span
+          class="material-symbols-outlined">
+          arrow_back
+        </span> Trước</button>
       <span class="page-info">Trang <strong>{{ currentPage() }}</strong> / {{ totalPages() }}</span>
-      <button class="btn btn-secondary" [disabled]="currentPage() === totalPages()" (click)="nextPage()">Sau →</button>
+      <button class="btn btn-secondary" [disabled]="currentPage() === totalPages()" (click)="nextPage()">Sau <span
+          class="material-symbols-outlined">
+          arrow_forward
+        </span></button>
     </div>
   </div>
 
@@ -175,12 +184,36 @@
               <span>SỐ TIỀN CẦN THU THÊM:</span>
               <span>{{ formatCurrency(getGrandTotal(booking) - booking.deposit) }}</span>
             </div>
+
+            <!-- Payment Method selection -->
+            <div class="payment-methods-sec">
+              <label class="form-label">Phương thức thanh toán khoản còn lại:</label>
+              <div class="payment-radios">
+                <label class="radio-label" [class.selected]="checkoutPaymentMethod() === 'cash'">
+                  <input type="radio" name="checkoutPM" value="cash" [checked]="checkoutPaymentMethod() === 'cash'"
+                    (change)="setPaymentMethod('cash')"> Tiền mặt
+                </label>
+                <label class="radio-label" [class.selected]="checkoutPaymentMethod() === 'bank_transfer'">
+                  <input type="radio" name="checkoutPM" value="bank_transfer"
+                    [checked]="checkoutPaymentMethod() === 'bank_transfer'"
+                    (change)="setPaymentMethod('bank_transfer')">
+                  Chuyển khoản
+                </label>
+                <label class="radio-label" [class.selected]="checkoutPaymentMethod() === 'momo_qr'">
+                  <input type="radio" name="checkoutPM" value="momo_qr"
+                    [checked]="checkoutPaymentMethod() === 'momo_qr'" (change)="setPaymentMethod('momo_qr')"> MOMO / QR
+                </label>
+              </div>
+            </div>
             }
           </div>
         </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" (click)="showDetailModal.set(false)">Đóng</button>
+        @if (booking.status !== 'completed') {
+        <button class="btn btn-success" (click)="confirmCheckout(booking)">💳 Hoàn tất thanh toán</button>
+        }
       </div>
     </div>
   </div>

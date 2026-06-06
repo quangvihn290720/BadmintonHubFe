@@ -3,7 +3,7 @@
     <h2 class="page-title">🏸 Đặt sân mới</h2>
     <p class="page-subtitle">Điền thông tin để đặt sân cầu lông</p>
   </div>
-  <div class="form-layout" [class.has-result]="checkResult()">
+  <div class="form-layout">
     <div class="form-card">
       <form [formGroup]="bookingForm" (ngSubmit)="onCheckAvailability()">
         <div class="form-section">
@@ -28,7 +28,7 @@
               <select formControlName="courtId" class="form-input">
                 <option value="">-- Chọn sân --</option>
                 @for (court of filteredCourts(); track court.id) {
-                  <option [value]="court.id">{{ court.name }} - {{ court.description }}</option>
+                <option [value]="court.id">{{ court.name }} - {{ court.description }}</option>
                 }
               </select>
               @if (showError('courtId')) { <span class="field-error">Vui lòng chọn sân</span> }
@@ -38,7 +38,7 @@
               <select formControlName="startTime" class="form-input">
                 <option value="">-- Chọn giờ --</option>
                 @for (slot of timeSlots(); track slot.id) {
-                  <option [value]="slot.startTime">{{ slot.startTime }}</option>
+                <option [value]="slot.startTime">{{ slot.startTime }}</option>
                 }
               </select>
               @if (showError('startTime')) { <span class="field-error">Vui lòng chọn giờ bắt đầu</span> }
@@ -48,7 +48,7 @@
               <select formControlName="endTime" class="form-input">
                 <option value="">-- Chọn giờ --</option>
                 @for (slot of endTimeSlots(); track slot.id) {
-                  <option [value]="slot.endTime">{{ slot.endTime }}</option>
+                <option [value]="slot.endTime">{{ slot.endTime }}</option>
                 }
               </select>
               @if (showError('endTime')) { <span class="field-error">Vui lòng chọn giờ kết thúc</span> }
@@ -60,9 +60,12 @@
           <div class="form-grid">
             <div class="form-group">
               <label class="form-label">Số điện thoại <span class="required">*</span></label>
-              <input type="tel" formControlName="customerPhone" class="form-input" placeholder="VD: 0901234567" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
-              @if (bookingForm.controls.customerPhone.errors?.['required'] && submitted()) { <span class="field-error">Vui lòng nhập số điện thoại</span> }
-              @if (bookingForm.controls.customerPhone.errors?.['pattern'] && submitted()) { <span class="field-error">Số điện thoại chỉ được chứa số</span> }
+              <input type="tel" formControlName="customerPhone" class="form-input" placeholder="VD: 0901234567"
+                oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+              @if (bookingForm.controls.customerPhone.errors?.['required'] && submitted()) { <span
+                class="field-error">Vui lòng nhập số điện thoại</span> }
+              @if (bookingForm.controls.customerPhone.errors?.['pattern'] && submitted()) { <span class="field-error">Số
+                điện thoại phải gồm 10 chữ số và bắt đầu bằng số 0</span> }
             </div>
             <div class="form-group">
               <label class="form-label">Tên khách hàng <span class="required">*</span></label>
@@ -71,7 +74,8 @@
             </div>
             <div class="form-group full-width">
               <label class="form-label">Ghi chú</label>
-              <textarea formControlName="note" class="form-input form-textarea" placeholder="Ghi chú thêm (không bắt buộc)" rows="3"></textarea>
+              <textarea formControlName="note" class="form-input form-textarea"
+                placeholder="Ghi chú thêm (không bắt buộc)" rows="3"></textarea>
             </div>
           </div>
         </div>
@@ -84,56 +88,96 @@
       </form>
     </div>
 
-    @if (checkResult()) {
-      @let res = checkResult()!;
-      <div class="result-panel">
-        @if (!res.hasConflict && !isBlacklisted()) {
-          <div class="result-card result-success">
-            <div class="result-icon">✅</div>
-            <h3>Lịch trống!</h3>
-            <p>Sân {{ getCourtName() }} ngày {{ bookingForm.controls.date.value }} từ {{ bookingForm.controls.startTime.value }} - {{ bookingForm.controls.endTime.value }} có thể đặt.</p>
+    @if (showResultModal() && checkResult()) {
+    @let res = checkResult()!;
+    <div class="modal-overlay" (click)="closeResultModal()">
+      <div class="modal-card select-modal" style="max-width: 460px; padding: 24px;" (click)="$event.stopPropagation()">
+        <div class="modal-header"
+          style="border: none; padding: 0 0 16px 0; background: none; display: flex; justify-content: space-between; align-items: center;">
+          <h3 style="margin: 0; font-size: 18px; font-weight: 700; color: var(--text-primary);">🔍 Kết quả kiểm tra lịch
+            trống</h3>
+          <button class="close-btn" type="button" (click)="closeResultModal()"
+            style="font-size: 20px; border: none; background: none; cursor: pointer; color: var(--text-secondary);">✕</button>
+        </div>
+        <div class="modal-body"
+          style="padding: 0; max-height: none; overflow: visible; display: flex; flex-direction: column; gap: 14px;">
+          @if (!res.hasConflict && !isBlacklisted()) {
+          <div class="result-card result-success"
+            style="border: none; padding: 0; background: none; text-align: center; border-top: none;">
+            <div class="result-icon" style="font-size: 48px; margin-bottom: 12px;">✅</div>
+            <h3 style="font-size: 20px; font-weight: 700; margin: 0 0 8px 0; color: var(--text-primary);">Lịch trống!
+            </h3>
+            <p style="font-size: 14px; color: var(--text-secondary); margin: 0 0 16px 0;">Sân {{ getCourtName() }} ngày
+              {{ bookingForm.controls.date.value }} từ {{ bookingForm.controls.startTime.value }} - {{
+              bookingForm.controls.endTime.value }} có thể đặt.</p>
             @if (foundCustomer()) {
-              @let customer = foundCustomer()!;
-              <div class="customer-info-result">
-                <h4>Thông tin khách hàng</h4>
-                <div class="info-row"><span>Tên:</span><strong>{{ customer.name }}</strong></div>
-                <div class="info-row"><span>SĐT:</span><strong>{{ customer.phone }}</strong></div>
-                <div class="info-row"><span>Số lần đặt:</span><strong>{{ customer.totalBookings }}</strong></div>
-              </div>
+            @let customer = foundCustomer()!;
+            <div class="customer-info-result"
+              style="text-align: left; background: var(--bg-secondary); border-radius: 10px; padding: 16px; margin: 16px 0;">
+              <h4 style="margin: 0 0 10px 0; font-size: 14px; color: var(--text-primary);">Thông tin khách hàng</h4>
+              <div class="info-row"><span>Tên:</span><strong>{{ customer.name }}</strong></div>
+              <div class="info-row"><span>SĐT:</span><strong>{{ customer.phone }}</strong></div>
+              <div class="info-row"><span>Số lần đặt:</span><strong>{{ customer.totalBookings }}</strong></div>
+            </div>
             }
-            <button class="btn btn-primary btn-lg" (click)="onContinue()">Tiếp tục →</button>
+            <button class="btn btn-primary btn-lg"
+              style="width: 100%; justify-content: center; padding: 12px; font-weight: 700; border-radius: 8px;"
+              (click)="onContinue(); closeResultModal()">Tiếp tục <span class="material-symbols-outlined">
+                arrow_forward
+              </span></button>
           </div>
-        }
-        @if (res.hasConflict) {
-          <div class="result-card result-error">
-            <div class="result-icon">❌</div>
-            <h3>Trùng lịch!</h3>
-            <p>{{ res.message }}</p>
+          }
+          @if (res.hasConflict) {
+          <div class="result-card result-error"
+            style="border: none; padding: 0; background: none; text-align: center; border-top: none;">
+            <div class="result-icon" style="font-size: 48px; margin-bottom: 12px;">❌</div>
+            <h3 style="font-size: 20px; font-weight: 700; margin: 0 0 8px 0; color: var(--text-primary);">Trùng lịch!
+            </h3>
+            <p style="font-size: 14px; color: var(--text-secondary); margin: 0 0 16px 0;">{{ res.message }}</p>
             @if (res.conflictBooking) {
-              @let conflict = res.conflictBooking;
-              <div class="conflict-detail">
-                <div class="info-row"><span>Mã đặt sân:</span><strong>{{ conflict.code }}</strong></div>
-                <div class="info-row"><span>Khách hàng:</span><strong>{{ conflict.customerName }}</strong></div>
-                <div class="info-row"><span>Thời gian:</span><strong>{{ conflict.startTime }} - {{ conflict.endTime }}</strong></div>
-              </div>
+            @let conflict = res.conflictBooking;
+            <div class="conflict-detail"
+              style="text-align: left; background: var(--bg-secondary); border-radius: 10px; padding: 16px; margin: 16px 0;">
+              <div class="info-row"><span>Mã đặt sân:</span><strong>{{ conflict.code }}</strong></div>
+              <div class="info-row"><span>Khách hàng:</span><strong>{{ conflict.customerName }}</strong></div>
+              <div class="info-row"><span>Thời gian:</span><strong>{{ conflict.startTime }} - {{ conflict.endTime
+                  }}</strong></div>
+            </div>
             }
+            <button class="btn btn-secondary btn-lg"
+              style="width: 100%; justify-content: center; padding: 12px; font-weight: 700; border-radius: 8px;"
+              (click)="closeResultModal()">Quay lại chỉnh sửa</button>
           </div>
-        }
-        @if (!res.hasConflict && isBlacklisted()) {
+          }
+          @if (!res.hasConflict && isBlacklisted()) {
           @let blacklistCust = foundCustomer()!;
-          <div class="result-card result-warning">
-            <div class="result-icon">⚠️</div>
-            <h3>Cảnh báo: Khách hàng trong danh sách đen!</h3>
-            <p><strong>{{ blacklistCust.name }}</strong> ({{ blacklistCust.phone }})</p>
-            <div class="blacklist-reason"><span>Lý do:</span> {{ blacklistCust.blacklistReason }}</div>
-            <div class="blacklist-actions">
-              <button class="btn btn-danger" (click)="onRefuseService()">🚫 Từ chối phục vụ</button>
-              <button class="btn btn-warning" (click)="onContinueBlacklist()">⚡ Tiếp tục với cọc 100%</button>
+          <div class="result-card result-warning"
+            style="border: none; padding: 0; background: none; text-align: center; border-top: none;">
+            <div class="result-icon" style="font-size: 48px; margin-bottom: 12px;">⚠️</div>
+            <h3 style="font-size: 20px; font-weight: 700; margin: 0 0 8px 0; color: var(--text-primary);">Khách hàng
+              thuộc danh sách đen!</h3>
+            <p style="font-size: 14px; color: var(--text-secondary); margin: 0 0 16px 0;"><strong>{{ blacklistCust.name
+                }}</strong> ({{ blacklistCust.phone }})</p>
+            <div class="blacklist-reason"
+              style="background: #fef3c7; padding: 12px 16px; border-radius: 8px; font-size: 14px; color: #92400e; margin: 12px 0 20px 0; text-align: left; border-left: 3px solid var(--color-warning);">
+              <span>Lý do:</span> {{ blacklistCust.blacklistReason }}</div>
+            <div class="blacklist-actions"
+              style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; flex-direction: column;">
+              <button class="btn btn-warning btn-lg"
+                style="width: 100%; justify-content: center; padding: 12px; font-weight: 700; border-radius: 8px;"
+                (click)="onContinueBlacklist(); closeResultModal()">⚡ Tiếp tục với cọc 100%</button>
+              <button class="btn btn-danger btn-lg"
+                style="width: 100%; justify-content: center; padding: 12px; font-weight: 700; border-radius: 8px;"
+                (click)="onRefuseService(); closeResultModal()">🚫 Từ chối phục vụ</button>
             </div>
           </div>
-        }
+          }
+        </div>
       </div>
+    </div>
     }
   </div>
 </div>
-<app-confirm-dialog [visible]="showRefuseDialog()" title="Từ chối phục vụ" message="Xác nhận từ chối phục vụ khách hàng này?" type="error" [actions]="refuseDialogActions" (cancel)="showRefuseDialog.set(false)"></app-confirm-dialog>
+<app-confirm-dialog [visible]="showRefuseDialog()" title="Từ chối phục vụ"
+  message="Xác nhận từ chối phục vụ khách hàng này?" type="error" [actions]="refuseDialogActions"
+  (cancel)="showRefuseDialog.set(false)"></app-confirm-dialog>

@@ -1,7 +1,10 @@
 import { Component, ChangeDetectionStrategy, inject, computed, signal } from '@angular/core';
 import { StatCardComponent } from '../../shared/components/stat-card/stat-card.component';
-import { MockBookingService } from '../../core/services/mock-booking.service';
 import { PricingService } from '../../core/services/pricing.service';
+import { ReportApiService } from '../../core/services/report-api.service';
+import { DailyRevenueReport } from '../../core/models/backend-api.model';
+import { MockBookingService } from '../../core/services/mock-booking.service';
+import { AuthService } from '../../core/services/auth.service';
 import { BookingStatus, Booking } from '../../core/models';
 
 @Component({
@@ -12,332 +15,339 @@ import { BookingStatus, Booking } from '../../core/models';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ReportsComponent {
-  private readonly bookingService = inject(MockBookingService);
   private readonly pricingService = inject(PricingService);
+  private readonly reportApi = inject(ReportApiService);
+  private readonly bookingService = inject(MockBookingService);
+  private readonly authService = inject(AuthService);
 
-  // Tab State
-  readonly activeTab = signal<'stats' | 'history' | 'cancellations'>('stats');
+  readonly selectedDate = signal<string>(new Date().toISOString().split('T')[0]);
+  readonly dailyReport = signal<DailyRevenueReport | null>(null);
+  readonly rangeReports = signal<DailyRevenueReport[]>([]);
+  readonly loading = signal<boolean>(false);
+  readonly error = signal<string | null>(null);
+  readonly activeTab = signal<'stats' | 'transactions'>('stats');
 
-  // Search & Pagination Signals for Historical Bookings
+  // Search and filters for the transaction list
   readonly searchQuery = signal<string>('');
-  readonly statusFilter = signal<'all' | 'completed' | 'cancelled'>('all');
-  readonly currentPage = signal<number>(1);
-  readonly pageSize = signal<number>(5);
-  readonly selectedBookingId = signal<number | null>(null);
-  readonly showDetailModal = signal<boolean>(false);
-
-  readonly monthRevenue = computed(() => {
-    return this.bookingService.bookings()
-      .filter(b => b.status !== 'cancelled')
-      .reduce((sum, b) => sum + b.totalAmount, 0);
-  });
-
-  readonly totalBookingsCount = computed(() => {
-    return this.bookingService.bookings().filter(b => b.status !== 'cancelled').length;
-  });
-
-  readonly cancelledCount = computed(() => {
-    return this.bookingService.bookings().filter(b => b.status === 'cancelled').length;
-  });
-
-  readonly utilizationRate = computed(() => {
-    const list = this.bookingService.bookings().filter(b => b.status !== 'cancelled');
-    const totalHours = list.reduce((sum, b) => {
-      const [sh, sm] = b.startTime.split(':').map(Number);
-      const [eh, em] = b.endTime.split(':').map(Number);
-      return sum + ((eh * 60 + em) - (sh * 60 + sm)) / 60;
-    }, 0);
-    // Capacitate based on mock data distribution
-    const rate = Math.round((totalHours / 120) * 100);
-    return `${Math.min(Math.max(rate, 45), 92)}%`;
-  });
+  readonly staffFilter = signal<string>('all');
+  readonly statusFilter = signal<string>('all');
 
   readonly weekData = computed(() => {
-    const list = this.bookingService.bookings();
-    const result = [];
-    const weekdays = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-    
-    // Generate dates relative to today
-    const baseDate = new Date();
-    
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(baseDate);
-      d.setDate(baseDate.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
-      const dayLabel = weekdays[d.getDay()];
-      
-      const dayRev = list
-        .filter(b => b.date === dateStr && b.status !== 'cancelled')
-        .reduce((sum, b) => sum + b.totalAmount, 0);
-      
-      result.push({
-        date: dateStr,
-        label: dayLabel,
-        value: dayRev >= 1000000 ? `${(dayRev / 1000000).toFixed(1)}M` : (dayRev >= 1000 ? `${dayRev / 1000}K` : `${dayRev}`),
-        rawVal: dayRev
-      });
-    }
-    
-    const maxRev = Math.max(...result.map(r => r.rawVal), 1);
-    return result.map(r => ({
-      ...r,
-      percent: Math.round((r.rawVal / maxRev) * 100)
-    }));
-  });
-
-  readonly topCourts = computed(() => {
-    const list = this.bookingService.bookings().filter(b => b.status !== 'cancelled');
-    const counts: Record<string, number> = {};
-    list.forEach(b => {
-      counts[b.courtName] = (counts[b.courtName] || 0) + 1;
-    });
-    
-    const sorted = Object.entries(counts)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
-      
-    const maxCount = sorted.length > 0 ? sorted[0].count : 1;
-    return sorted.map(c => ({
-      ...c,
-      percent: Math.round((c.count / maxCount) * 100)
-    }));
-  });
-
-  readonly peakHoursData = computed(() => {
-    const list = this.bookingService.bookings().filter(b => b.status !== BookingStatus.Cancelled);
-    let morning = 0;
-    let noon = 0;
-    let afternoon = 0;
-    let evening = 0;
-    
-    list.forEach(b => {
-      const [h] = b.startTime.split(':').map(Number);
-      if (h >= 6 && h < 11) morning++;
-      else if (h >= 11 && h < 14) noon++;
-      else if (h >= 14 && h < 17) afternoon++;
-      else if (h >= 17 && h <= 22) evening++;
-    });
-    
-    const total = morning + noon + afternoon + evening || 1;
-    return [
-      { label: 'Sáng (6h - 11h)', count: morning, percent: Math.round((morning / total) * 100) },
-      { label: 'Trưa (11h - 14h)', count: noon, percent: Math.round((noon / total) * 100) },
-      { label: 'Chiều (14h - 17h)', count: afternoon, percent: Math.round((afternoon / total) * 100) },
-      { label: 'Tối (17h - 22h)', count: evening, percent: Math.round((evening / total) * 100) }
-    ];
-  });
-
-  readonly revenueStructureData = computed(() => {
-    const list = this.bookingService.bookings().filter(b => b.status !== BookingStatus.Cancelled);
-    let courtFeeTotal = 0;
-    let servicesTotal = 0;
-    let overtimeTotal = 0;
-    
-    list.forEach(b => {
-      courtFeeTotal += b.totalAmount;
-      servicesTotal += b.additionalServices?.reduce((s, i) => s + i.price * i.quantity, 0) || 0;
-      overtimeTotal += b.overtimeAmount || 0;
-    });
-    
-    const total = courtFeeTotal + servicesTotal + overtimeTotal || 1;
-    return {
-      courtFee: courtFeeTotal,
-      courtFeePercent: Math.round((courtFeeTotal / total) * 100),
-      services: servicesTotal,
-      servicesPercent: Math.round((servicesTotal / total) * 100),
-      overtime: overtimeTotal,
-      overtimePercent: Math.round((overtimeTotal / total) * 100),
-      total: total
-    };
-  });
-
-  readonly courtPerformanceData = computed(() => {
-    const list = this.bookingService.bookings().filter(b => b.status !== BookingStatus.Cancelled);
-    
-    const courts = Array.from({ length: 8 }, (_, i) => ({
-      id: i + 1,
-      name: `Sân ${i + 1}`,
-      count: 0,
-      revenue: 0,
-      percent: 0
-    }));
-    
-    list.forEach(b => {
-      let courtIndex = b.courtId - 1;
-      if (courtIndex < 0 || courtIndex >= 8) {
-        const match = b.courtName.match(/\d+/);
-        if (match) {
-          courtIndex = parseInt(match[0], 10) - 1;
-        }
-      }
-      if (courtIndex >= 0 && courtIndex < 8) {
-        courts[courtIndex].count++;
-        const srv = b.additionalServices?.reduce((s, i) => s + i.price * i.quantity, 0) || 0;
-        const ot = b.overtimeAmount || 0;
-        courts[courtIndex].revenue += b.totalAmount + srv + ot;
-      }
-    });
-    
-    const maxRev = Math.max(...courts.map(c => c.revenue), 1);
-    return courts.map(c => ({
-      ...c,
-      percent: Math.round((c.revenue / maxRev) * 100)
-    })).sort((a, b) => b.revenue - a.revenue);
-  });
-
-  readonly cancelledBookings = computed(() => {
-    return this.bookingService.bookings()
-      .filter(b => b.status === 'cancelled')
-      .sort((a, b) => b.date.localeCompare(a.date) || b.startTime.localeCompare(a.startTime));
-  });
-
-  // Historical Bookings List (Completed & Cancelled)
-  readonly payments = computed(() => {
-    const bookings = this.bookingService.bookings()
-      .filter(b => b.status === BookingStatus.Completed || b.status === BookingStatus.Cancelled);
-    
-    return bookings.map(b => {
-      let status: 'paid' | 'cancelled' = 'paid';
-      if (b.status === BookingStatus.Cancelled) {
-        status = 'cancelled';
-      }
-      
-      let pmLabel = 'Tiền mặt';
-      if (b.paymentMethod === 'bank_transfer') pmLabel = 'Chuyển khoản';
-      if (b.paymentMethod === 'momo_qr') pmLabel = 'MOMO / QR';
-
-      const srvAmt = b.additionalServices?.reduce((s, i) => s + i.price * i.quantity, 0) || 0;
-      const otAmt = b.overtimeAmount || 0;
-      const totalAmount = b.totalAmount + srvAmt + otAmt;
-
+    const reports = this.rangeReports();
+    const max = Math.max(...reports.map(report => Number(report.netRevenue || 0)), 1);
+    return reports.map(report => {
+      const date = new Date(`${report.date}T00:00:00`);
+      const value = Number(report.netRevenue || 0);
       return {
-        id: b.id,
-        bookingCode: b.code,
-        customerName: b.customerName,
-        courtName: b.courtName,
-        date: b.date,
-        totalAmount: totalAmount,
-        deposit: b.deposit,
-        remaining: b.status === BookingStatus.Completed ? 0 : totalAmount - b.deposit,
-        status: status,
-        paymentMethod: pmLabel
+        date: report.date,
+        label: ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][date.getDay()],
+        value: this.shortCurrency(value),
+        rawVal: value,
+        percent: Math.round((value / max) * 100)
       };
     });
   });
 
-  readonly filteredPayments = computed(() => {
+  readonly paymentBreakdownRows = computed(() => {
+    const report = this.dailyReport();
+    if (!report) return [];
+    return Object.entries(report.paymentBreakdownByMethod || {}).map(([method, amount]) => ({
+      method,
+      label: this.paymentMethodLabel(method),
+      amount: Number(amount || 0)
+    }));
+  });
+
+  readonly revenueStructureData = computed(() => {
+    const report = this.dailyReport();
+    const courtFee = Number(report?.totalCourtAmount || 0);
+    const services = Number(report?.totalServiceAmount || 0);
+    const discount = Number(report?.totalDiscountAmount || 0);
+    const total = Math.max(courtFee + services + discount, 1);
+    return {
+      courtFee,
+      courtFeePercent: Math.round((courtFee / total) * 100),
+      services,
+      servicesPercent: Math.round((services / total) * 100),
+      discount,
+      discountPercent: Math.round((discount / total) * 100),
+      total: Number(report?.netRevenue || 0)
+    };
+  });
+
+  // Advanced Statistic 1: Service Revenue Details
+  readonly serviceRevenueDetails = computed(() => {
+    const bookings = this.bookingService.getAllBookings();
+    const serviceMap = new Map<string, { name: string; quantity: number; revenue: number }>();
+    
+    bookings.forEach(b => {
+      if (b.additionalServices) {
+        b.additionalServices.forEach(s => {
+          if (!serviceMap.has(s.name)) {
+            serviceMap.set(s.name, { name: s.name, quantity: 0, revenue: 0 });
+          }
+          const item = serviceMap.get(s.name)!;
+          item.quantity += s.quantity;
+          item.revenue += s.price * s.quantity;
+        });
+      }
+    });
+    
+    return Array.from(serviceMap.values()).sort((a, b) => b.revenue - a.revenue);
+  });
+
+  // Advanced Statistic 2: Hourly Booking Density
+  readonly hourlyBookingDensity = computed(() => {
+    const date = this.selectedDate();
+    const bookings = this.bookingService.getBookingsByDate(date).filter(b => b.status !== BookingStatus.Cancelled);
+    const hours = ['06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00'];
+    
+    const density = hours.map(h => {
+      const [hHour] = h.split(':').map(Number);
+      const count = bookings.filter(b => {
+        const [sh] = b.startTime.split(':').map(Number);
+        const [eh] = b.endTime.split(':').map(Number);
+        return hHour >= sh && hHour < eh;
+      }).length;
+      return { hour: h, count };
+    });
+    
+    const maxCount = Math.max(...density.map(d => d.count), 1);
+    return density.map(d => ({
+      ...d,
+      percent: Math.round((d.count / maxCount) * 100)
+    }));
+  });
+
+  // Advanced Statistic 3: Top-spending Customers
+  readonly topCustomers = computed(() => {
+    const bookings = this.bookingService.getAllBookings();
+    const customerMap = new Map<string, { name: string; phone: string; count: number; spent: number }>();
+    
+    bookings.forEach(b => {
+      if (!b.customerPhone) return;
+      if (!customerMap.has(b.customerPhone)) {
+        customerMap.set(b.customerPhone, { name: b.customerName, phone: b.customerPhone, count: 0, spent: 0 });
+      }
+      const item = customerMap.get(b.customerPhone)!;
+      item.count += 1;
+      let spent = b.deposit;
+      if (b.status === BookingStatus.Completed) {
+        spent += (b.checkoutAmount || 0);
+      }
+      item.spent += spent;
+    });
+    
+    return Array.from(customerMap.values())
+      .sort((a, b) => b.spent - a.spent)
+      .slice(0, 5);
+  });
+
+  // Advanced Statistic 4: Staff Productivity Stats
+  readonly staffProductivity = computed(() => {
+    const bookings = this.bookingService.getAllBookings();
+    const staffs = this.authService.getAllStaff();
+    const productivityMap = new Map<string, { name: string; count: number; revenue: number }>();
+    
+    staffs.forEach(s => {
+      productivityMap.set(s.name, { name: s.name, count: 0, revenue: 0 });
+    });
+    
+    bookings.forEach(b => {
+      const staffName = b.staffName || 'Hệ thống';
+      if (!productivityMap.has(staffName)) {
+        productivityMap.set(staffName, { name: staffName, count: 0, revenue: 0 });
+      }
+      const data = productivityMap.get(staffName)!;
+      data.count += 1;
+      let amount = b.deposit;
+      if (b.status === BookingStatus.Completed) {
+        const srvAmt = b.additionalServices?.reduce((sum, s) => sum + s.price * s.quantity, 0) || 0;
+        amount = b.totalAmount + (b.overtimeAmount || 0) + srvAmt;
+      }
+      data.revenue += amount;
+    });
+    
+    return Array.from(productivityMap.values()).sort((a, b) => b.revenue - a.revenue);
+  });
+
+  // Filtered booking logs for transaction view
+  readonly filteredBookings = computed(() => {
     const query = this.searchQuery().toLowerCase().trim();
+    const staff = this.staffFilter();
     const status = this.statusFilter();
-    const baseList = this.payments();
-
-    let list = baseList;
-    if (status !== 'all') {
-      const mappedStatus = status === 'completed' ? 'paid' : 'cancelled';
-      list = baseList.filter(p => p.status === mappedStatus);
+    const date = this.selectedDate();
+    
+    // Show bookings for the selected date
+    let list = this.bookingService.getBookingsByDate(date);
+    
+    if (staff !== 'all') {
+      list = list.filter(b => (b.staffName || 'Hệ thống') === staff);
     }
-
-    if (!query) return list;
-
-    return list.filter(p =>
-      p.bookingCode.toLowerCase().includes(query) ||
-      p.customerName.toLowerCase().includes(query) ||
-      p.courtName.toLowerCase().includes(query) ||
-      p.paymentMethod.toLowerCase().includes(query)
-    );
+    
+    if (status !== 'all') {
+      list = list.filter(b => b.status === status);
+    }
+    
+    if (query) {
+      list = list.filter(b =>
+        b.code.toLowerCase().includes(query) ||
+        b.customerName.toLowerCase().includes(query) ||
+        (b.staffName || '').toLowerCase().includes(query) ||
+        b.courtName.toLowerCase().includes(query)
+      );
+    }
+    
+    return list;
   });
 
-  readonly totalPages = computed(() => {
-    const count = this.filteredPayments().length;
-    return Math.max(1, Math.ceil(count / this.pageSize()));
-  });
+  constructor() {
+    this.loadReport(this.selectedDate());
+  }
 
-  readonly paginatedPayments = computed(() => {
-    const start = (this.currentPage() - 1) * this.pageSize();
-    return this.filteredPayments().slice(start, start + this.pageSize());
-  });
+  loadReport(date: string): void {
+    this.selectedDate.set(date);
+    this.loading.set(true);
+    this.error.set(null);
+    const to = new Date(`${date}T00:00:00`);
+    const from = new Date(to);
+    from.setDate(to.getDate() - 6);
+    const fromStr = from.toISOString().split('T')[0];
 
-  readonly activeBooking = computed(() => {
-    const id = this.selectedBookingId();
-    if (!id) return null;
-    return this.bookingService.getAllBookings().find(b => b.id === id) || null;
-  });
+    this.reportApi.getDailyRevenue(date).subscribe({
+      next: report => this.dailyReport.set(report || this.emptyReport(date)),
+      error: err => {
+        this.error.set(err.error?.message || 'Không tải được báo cáo doanh thu.');
+        this.dailyReport.set(this.emptyReport(date));
+      }
+    });
+
+    this.reportApi.getRevenueRange(fromStr, date).subscribe({
+      next: reports => {
+        this.rangeReports.set(reports.length ? reports : [this.emptyReport(date)]);
+        this.loading.set(false);
+      },
+      error: () => {
+        this.rangeReports.set([this.emptyReport(date)]);
+        this.loading.set(false);
+      }
+    });
+  }
+
+  onDateChange(event: Event): void {
+    this.loadReport((event.target as HTMLInputElement).value);
+  }
+
+  adjustDate(days: number): void {
+    const current = new Date(`${this.selectedDate()}T00:00:00`);
+    current.setDate(current.getDate() + days);
+    const newDateStr = current.toISOString().split('T')[0];
+    this.loadReport(newDateStr);
+  }
 
   formatCurrency(amount: number): string {
-    return this.pricingService.formatCurrency(amount);
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
   }
 
   formatDate(dateStr: string): string {
     if (!dateStr) return '';
-    const d = new Date(dateStr + 'T00:00:00');
-    return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth()+1).toString().padStart(2, '0')}/${d.getFullYear()}`;
+    const d = new Date(`${dateStr}T00:00:00`);
+    return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
   }
 
-  onTabChange(tab: 'stats' | 'history' | 'cancellations'): void {
-    this.activeTab.set(tab);
-    this.currentPage.set(1);
-    this.searchQuery.set('');
-  }
-
-  prevPage(): void {
-    if (this.currentPage() > 1) {
-      this.currentPage.update(p => p - 1);
+  paymentMethodLabel(method: string): string {
+    switch (method) {
+      case 'CASH': return 'Tiền mặt';
+      case 'BANK_TRANSFER': return 'Chuyển khoản';
+      case 'QR_CODE': return 'QR / Momo';
+      default: return method;
     }
-  }
-
-  nextPage(): void {
-    if (this.currentPage() < this.totalPages()) {
-      this.currentPage.update(p => p + 1);
-    }
-  }
-
-  openDetails(id: number): void {
-    this.selectedBookingId.set(id);
-    this.showDetailModal.set(true);
   }
 
   getStatusLabel(status: string): string {
     switch (status) {
-      case 'paid': return 'Đã hoàn thành';
-      case 'cancelled': return 'Đã hủy lịch';
+      case 'available': return 'Trống';
+      case 'deposited': return 'Đã cọc';
+      case 'playing': return 'Đang chơi';
+      case 'cancelled': return 'Đã hủy';
+      case 'completed': return 'Hoàn thành';
       default: return status;
     }
   }
 
-  getServicesTotal(booking: Booking): number {
-    if (!booking.additionalServices) return 0;
-    return booking.additionalServices.reduce((sum, s) => sum + s.price * s.quantity, 0);
+  exportToExcel(): void {
+    const report = this.dailyReport();
+    if (!report) return;
+
+    let csvContent = '\uFEFF'; // UTF-8 BOM
+    csvContent += `BÁO CÁO DOANH THU CLB CẦU LÔNG - NGÀY ${this.formatDate(report.date)}\n\n`;
+    
+    csvContent += 'THÔNG SỐ CHUNG\n';
+    csvContent += `Doanh thu ròng,${report.netRevenue} VND\n`;
+    csvContent += `Đặt sân hoàn thành,${report.completedBookingCount}\n`;
+    csvContent += `Đặt sân đã hủy,${report.cancelledBookingCount}\n`;
+    csvContent += `Doanh thu dịch vụ,${report.serviceItemRevenue} VND\n\n`;
+
+    csvContent += 'CHI TIẾT DOANH THU DỊCH VỤ\n';
+    csvContent += 'Tên dịch vụ,Số lượng bán,Doanh thu\n';
+    this.serviceRevenueDetails().forEach(s => {
+      csvContent += `"${s.name}",${s.quantity},${s.revenue} VND\n`;
+    });
+    csvContent += '\n';
+
+    csvContent += 'MẬT ĐỘ ĐẶT SÂN THEO KHUNG GIỜ\n';
+    csvContent += 'Khung giờ,Số lượt đặt\n';
+    this.hourlyBookingDensity().forEach(h => {
+      csvContent += `${h.hour},${h.count}\n`;
+    });
+    csvContent += '\n';
+
+    csvContent += 'KHÁCH HÀNG CHI TIÊU CAO\n';
+    csvContent += 'Tên khách hàng,Số điện thoại,Lượt đặt,Tổng chi tiêu\n';
+    this.topCustomers().forEach(c => {
+      csvContent += `"${c.name}","${c.phone}",${c.count},${c.spent} VND\n`;
+    });
+    csvContent += '\n';
+
+    csvContent += 'DANH SÁCH GIAO DỊCH TRONG NGÀY\n';
+    csvContent += 'Mã đặt sân,Nhân viên,Khách hàng,Số điện thoại,Sân,Khung giờ,Tổng tiền,Đã cọc,Trạng thái\n';
+    const dayBookings = this.bookingService.getBookingsByDate(report.date);
+    dayBookings.forEach(b => {
+      const servicesTotal = b.additionalServices?.reduce((sum, s) => sum + s.price * s.quantity, 0) || 0;
+      const total = b.totalAmount + (b.overtimeAmount || 0) + servicesTotal;
+      csvContent += `"${b.code}","${b.staffName || 'Hệ thống'}","${b.customerName}","${b.customerPhone}","${b.courtName}","${b.startTime}-${b.endTime}",${total},${b.deposit},"${this.getStatusLabel(b.status)}"\n`;
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Bao_cao_doanh_thu_${report.date}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
-  getGrandTotal(booking: Booking): number {
-    return booking.totalAmount + (booking.overtimeAmount || 0) + this.getServicesTotal(booking);
+  private shortCurrency(amount: number): string {
+    if (amount >= 1000000) return `${(amount / 1000000).toFixed(1)}M`;
+    if (amount >= 1000) return `${Math.round(amount / 1000)}K`;
+    return `${amount}`;
   }
 
-  getPaymentMethodLabel(pm?: string): string {
-    switch (pm) {
-      case 'cash': return 'Tiền mặt';
-      case 'bank_transfer': return 'Chuyển khoản';
-      case 'momo_qr': return 'MOMO / QR';
-      default: return 'Không xác định';
-    }
-  }
-
-  onSearch(event: Event): void {
-    const val = (event.target as HTMLInputElement).value;
-    this.searchQuery.set(val);
-    this.currentPage.set(1);
-  }
-
-  onStatusFilterChange(event: Event): void {
-    const val = (event.target as HTMLSelectElement).value as any;
-    this.statusFilter.set(val);
-    this.currentPage.set(1);
-  }
-
-  onPageSizeChange(event: Event): void {
-    const val = Number((event.target as HTMLSelectElement).value);
-    this.pageSize.set(val);
-    this.currentPage.set(1);
+  private emptyReport(date: string): DailyRevenueReport {
+    return {
+      date,
+      totalCourtAmount: 0,
+      totalServiceAmount: 0,
+      totalDiscountAmount: 0,
+      totalDepositAmount: 0,
+      totalFinalPaymentAmount: 0,
+      totalRefundAmount: 0,
+      netRevenue: 0,
+      completedBookingCount: 0,
+      cancelledBookingCount: 0,
+      serviceItemRevenue: 0,
+      paymentBreakdownByMethod: {}
+    };
   }
 }
-

@@ -53,7 +53,10 @@ export class CourtApiService {
   createCourt(payload: Omit<BackendCourt, 'id'>): Observable<BackendCourt> {
     return (this.http.post(API_ENDPOINTS.ADMIN.COURTS, payload, {
       headers: new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID() })
-    }) as Observable<ApiResponse<BackendCourt>>).pipe(map(response => response.data));
+    }) as Observable<ApiResponse<BackendCourt>>).pipe(
+      map(response => response.data),
+      tap(() => this.loadCourts().subscribe())
+    );
   }
 
   updateCourt(court: BackendCourt): Observable<BackendCourt> {
@@ -62,12 +65,16 @@ export class CourtApiService {
       basePricePerHour: court.basePricePerHour,
       locationNote: court.locationNote,
       status: court.status
-    }) as Observable<ApiResponse<BackendCourt>>).pipe(map(response => response.data));
+    }) as Observable<ApiResponse<BackendCourt>>).pipe(
+      map(response => response.data),
+      tap(() => this.loadCourts().subscribe())
+    );
   }
 
   updateCourtStatus(id: string, status: string): Observable<BackendCourt> {
-    return from(this.patch(API_ENDPOINTS.ADMIN.COURT_STATUS(id), { status }) as Promise<ApiResponse<BackendCourt>>).pipe(
-      map(response => response.data)
+    return (this.http.patch(API_ENDPOINTS.ADMIN.COURT_STATUS(id), { status }) as Observable<ApiResponse<BackendCourt>>).pipe(
+      map(response => response.data),
+      tap(() => this.loadCourts().subscribe())
     );
   }
 
@@ -82,23 +89,5 @@ export class CourtApiService {
 
   getCourtName(uiCourtId: number): string {
     return this.courtsSignal().find(court => court.id === uiCourtId)?.name || `Court ${uiCourtId}`;
-  }
-
-  private patch(path: string, body: unknown): Promise<unknown> {
-    return fetch(`${this.apiConfig.backendUrl()}${path}`, {
-      method: 'PATCH',
-      headers: this.fetchHeaders(),
-      body: JSON.stringify(body)
-    }).then(response => response.json());
-  }
-
-  private fetchHeaders(): Record<string, string> {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'X-Request-Id': crypto.randomUUID()
-    };
-    const token = this.apiConfig.token();
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    return headers;
   }
 }
