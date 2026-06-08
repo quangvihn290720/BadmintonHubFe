@@ -132,15 +132,18 @@ export class PricingService {
   }
 
   private toUiRules(rule: BackendPriceRule, index: number): PricingRule[] {
-    const active = rule.status === 'ACTIVE';
+    const status = rule.status || 'ACTIVE';
+    const active = status === 'ACTIVE';
     if (!active) return [];
-    const start = rule.startTime.slice(0, 5);
-    const end = rule.endTime.slice(0, 5);
-    const isVip = rule.name.toLowerCase().includes('vip');
+    const start = (rule.gioBatDau || rule.startTime || '00:00').slice(0, 5);
+    const end = (rule.gioKetThuc || rule.endTime || '23:59').slice(0, 5);
+    const label = rule.name || `Khung gio ${index + 1}`;
+    const multiplier = Number(rule.heSoGia ?? rule.multiplier ?? 1);
+    const isVip = label.toLowerCase().includes('vip');
     const courtTypes: CourtType[] = isVip ? ['vip'] : ['standard', 'vip'];
     return courtTypes.map((courtType, offset) => {
       const base = courtType === 'vip' ? 180000 : 100000;
-      const pricePerHour = Math.round(base * Number(rule.multiplier || 1));
+      const pricePerHour = Math.round(base * multiplier);
       return {
         id: index * 10 + offset + 1,
         backendId: rule.id,
@@ -148,10 +151,10 @@ export class PricingService {
         timeStart: start,
         timeEnd: end,
         pricePerHour,
-        isPeak: Number(rule.multiplier || 1) > 1,
+        isPeak: multiplier > 1,
         peakSurcharge: Math.max(0, pricePerHour - base),
         discount: 0,
-        label: rule.name
+        label
       };
     });
   }

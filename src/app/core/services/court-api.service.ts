@@ -31,9 +31,9 @@ export class CourtApiService {
         this.backendCourts.set(courts);
         this.courtsSignal.set(courts.map((court: BackendCourt, index: number) => ({
           id: index + 1,
-          name: court.code,
-          type: court.basePricePerHour >= 150000 ? 'vip' : 'standard',
-          description: court.locationNote || court.status
+          name: court.kyHieuSoSan || court.code || `SAN-${index + 1}`,
+          type: Number(court.giaCoBanTheoGio ?? court.basePricePerHour ?? 0) >= 150000 ? 'vip' : 'standard',
+          description: court.viTriText || court.locationNote || court.trangThaiVanHanh || court.status || ''
         })));
       }),
       map(() => this.courtsSignal())
@@ -88,6 +88,6 @@ export class CourtApiService {
   }
 
   getCourtName(uiCourtId: number): string {
-    return this.courtsSignal().find(court => court.id === uiCourtId)?.name || `Court ${uiCourtId}`;
+    return this.courtsSignal().find(court => court.id === uiCourtId)?.name || `San ${uiCourtId}`;
   }
 }

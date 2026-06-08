@@ -1,4 +1,4 @@
-export type BackendRole = 'ADMIN' | 'MANAGER' | 'CASHIER';
+export type BackendRole = 'ADMIN' | 'MANAGER' | 'CASHIER' | 'QUAN_LY' | 'THU_NGAN';
 export type UiRole = 'admin' | 'staff';
 
 export interface LoginRequest {
@@ -10,7 +10,8 @@ export interface LoginResponse {
   accessToken: string;
   tokenType: string;
   expiresIn: number;
-  employeeId: string;
+  employeeId?: string;
+  nhanvienId?: string;
   username: string;
   role: BackendRole;
 }

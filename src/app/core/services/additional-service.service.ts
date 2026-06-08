@@ -39,11 +39,11 @@ export class AdditionalServiceService {
       this.servicesSignal.set(items.map((item, index) => ({
         id: index + 1,
         key: item.id,
-        name: item.name,
-        price: Number(item.price),
-        type: item.type,
-        stockQuantity: item.stockQuantity,
-        status: item.status
+        name: item.tenDichVu || item.name || `Dich vu ${index + 1}`,
+        price: Number(item.giaBan ?? item.price ?? 0),
+        type: item.loaiDichVu || item.type,
+        stockQuantity: item.tonKho ?? item.stockQuantity,
+        status: item.trangThai || item.status
       })));
       this.nextId = items.length + 1;
     });

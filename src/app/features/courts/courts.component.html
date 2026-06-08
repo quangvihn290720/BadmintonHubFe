@@ -1,42 +1,40 @@
 <div class="page">
   <div class="page-header">
     <div>
-      <h2 class="page-title">Quản lý sân</h2>
-      <p class="page-subtitle">Thêm, sửa và đổi trạng thái sân từ API quản trị backend</p>
+      <h2 class="page-title">Quan ly san</h2>
+      <p class="page-subtitle">Them, sua va doi trang thai san tu API quan tri backend</p>
     </div>
-    <button class="btn btn-primary" (click)="openAddModal()">Thêm sân</button>
+    <button class="btn btn-primary" (click)="openAddModal()">Them san</button>
   </div>
 
   <div class="search-filter-row">
     <div class="search-box-wrapper">
-      <span class="search-icon">🔍</span>
-      <input type="text" class="search-input" placeholder="Tìm theo mã sân, vị trí, trạng thái..." [value]="searchQuery()" (input)="onSearch($event)">
+      <span class="search-icon">Tim</span>
+      <input type="text" class="search-input" placeholder="Tim theo ma san, vi tri, trang thai..." [value]="searchQuery()" (input)="onSearch($event)">
     </div>
   </div>
 
-  <!-- Visual Court Layout Simulator Grid -->
   <div class="layout-simulator-card">
     <div class="simulator-header">
       <div>
-        <h3 class="simulator-title">🏟️ Sơ đồ mặt bằng sân vận động BadmintonHub</h3>
-        <p class="page-subtitle">Sân đấu mô phỏng thực tế. Click ô sân để sửa thông tin hoặc đổi nhanh trạng thái</p>
+        <h3 class="simulator-title">So do mat bang san BadmintonHub</h3>
+        <p class="page-subtitle">Click vao o san de sua thong tin hoac doi nhanh trang thai</p>
       </div>
       <div class="simulator-legend">
-        <span class="legend-item-group"><span class="legend-circle bg-success"></span> Hoạt động</span>
-        <span class="legend-item-group"><span class="legend-circle bg-warning"></span> Bảo trì</span>
-        <span class="legend-item-group"><span class="legend-circle bg-inactive"></span> Ngừng hoạt động</span>
+        <span class="legend-item-group"><span class="legend-circle bg-success"></span> Hoat dong</span>
+        <span class="legend-item-group"><span class="legend-circle bg-warning"></span> Bao tri</span>
+        <span class="legend-item-group"><span class="legend-circle bg-inactive"></span> Ngung hoat dong</span>
       </div>
     </div>
 
     <div class="stadium-container">
-      <!-- Hàng sân phía trên -->
       <div class="stadium-row">
         @for (court of courtsRow1(); track court.id) {
           <div class="stadium-court-wrapper">
-            <div class="mini-court" 
-                 [class.status-active]="court.status === 'AVAILABLE'" 
-                 [class.status-maintenance]="court.status === 'MAINTENANCE'" 
-                 [class.status-inactive]="court.status === 'INACTIVE'"
+            <div class="mini-court"
+                 [class.status-active]="courtStatus(court) === 'AVAILABLE'"
+                 [class.status-maintenance]="courtStatus(court) === 'MAINTENANCE'"
+                 [class.status-inactive]="courtStatus(court) === 'INACTIVE'"
                  (click)="openEditModal(court)">
               <div class="court-markings">
                 <div class="line-outer"></div>
@@ -52,12 +50,12 @@
                 </div>
               </div>
               <div class="court-overlay-info">
-                <span class="court-code-label">{{ court.code }}</span>
-                <span class="court-type-badge" [class.vip]="court.basePricePerHour > 150000">
-                  {{ court.basePricePerHour > 150000 ? '⭐ VIP' : 'Std' }}
+                <span class="court-code-label">{{ courtCode(court) }}</span>
+                <span class="court-type-badge" [class.vip]="courtBasePrice(court) > 150000">
+                  {{ courtBasePrice(court) > 150000 ? 'VIP' : 'Std' }}
                 </span>
                 <span class="court-status-text">
-                  {{ court.status === 'AVAILABLE' ? 'Sẵn sàng' : (court.status === 'MAINTENANCE' ? 'Bảo trì' : 'Đã khóa') }}
+                  {{ courtStatus(court) === 'AVAILABLE' ? 'San sang' : (courtStatus(court) === 'MAINTENANCE' ? 'Bao tri' : 'Da khoa') }}
                 </span>
               </div>
             </div>
@@ -65,21 +63,19 @@
         }
       </div>
 
-      <!-- Lối đi giữa các hàng sân -->
       <div class="stadium-walkway">
         <div class="walkway-carpet">
-          <span class="walkway-text">🚶 HÀNH LANG LỐI ĐI CHÍNH • MAIN WALKWAY • AN TOÀN LÀ TRÊN HẾT 🚶</span>
+          <span class="walkway-text">HANH LANG LOI DI CHINH</span>
         </div>
       </div>
 
-      <!-- Hàng sân phía dưới -->
       <div class="stadium-row">
         @for (court of courtsRow2(); track court.id) {
           <div class="stadium-court-wrapper">
-            <div class="mini-court" 
-                 [class.status-active]="court.status === 'AVAILABLE'" 
-                 [class.status-maintenance]="court.status === 'MAINTENANCE'" 
-                 [class.status-inactive]="court.status === 'INACTIVE'"
+            <div class="mini-court"
+                 [class.status-active]="courtStatus(court) === 'AVAILABLE'"
+                 [class.status-maintenance]="courtStatus(court) === 'MAINTENANCE'"
+                 [class.status-inactive]="courtStatus(court) === 'INACTIVE'"
                  (click)="openEditModal(court)">
               <div class="court-markings">
                 <div class="line-outer"></div>
@@ -95,12 +91,12 @@
                 </div>
               </div>
               <div class="court-overlay-info">
-                <span class="court-code-label">{{ court.code }}</span>
-                <span class="court-type-badge" [class.vip]="court.basePricePerHour > 150000">
-                  {{ court.basePricePerHour > 150000 ? '⭐ VIP' : 'Std' }}
+                <span class="court-code-label">{{ courtCode(court) }}</span>
+                <span class="court-type-badge" [class.vip]="courtBasePrice(court) > 150000">
+                  {{ courtBasePrice(court) > 150000 ? 'VIP' : 'Std' }}
                 </span>
                 <span class="court-status-text">
-                  {{ court.status === 'AVAILABLE' ? 'Sẵn sàng' : (court.status === 'MAINTENANCE' ? 'Bảo trì' : 'Đã khóa') }}
+                  {{ courtStatus(court) === 'AVAILABLE' ? 'San sang' : (courtStatus(court) === 'MAINTENANCE' ? 'Bao tri' : 'Da khoa') }}
                 </span>
               </div>
             </div>
@@ -120,36 +116,36 @@
     <table class="data-table">
       <thead>
         <tr>
-          <th>Mã sân</th>
-          <th>Giá giờ</th>
-          <th>Vị trí/ghi chú</th>
-          <th>Trạng thái</th>
-          <th>Hành động</th>
+          <th>Ma san</th>
+          <th>Gia gio</th>
+          <th>Vi tri/ghi chu</th>
+          <th>Trang thai</th>
+          <th>Hanh dong</th>
         </tr>
       </thead>
       <tbody>
         @for (court of filteredCourts(); track court.id) {
           <tr>
-            <td><strong>{{ court.code }}</strong></td>
-            <td>{{ formatCurrency(court.basePricePerHour) }}</td>
-            <td>{{ court.locationNote || '-' }}</td>
+            <td><strong>{{ courtCode(court) }}</strong></td>
+            <td>{{ formatCurrency(courtBasePrice(court)) }}</td>
+            <td>{{ courtLocation(court) || '-' }}</td>
             <td>
-              <span class="status-pill" [class.active]="court.status === 'AVAILABLE'" [class.maintenance]="court.status === 'MAINTENANCE'">
-                {{ court.status === 'AVAILABLE' ? 'Hoạt động' : (court.status === 'MAINTENANCE' ? 'Bảo trì' : 'Ngừng hoạt động') }}
+              <span class="status-pill" [class.active]="courtStatus(court) === 'AVAILABLE'" [class.maintenance]="courtStatus(court) === 'MAINTENANCE'">
+                {{ courtStatus(court) === 'AVAILABLE' ? 'Hoat dong' : (courtStatus(court) === 'MAINTENANCE' ? 'Bao tri' : 'Ngung hoat dong') }}
               </span>
             </td>
             <td>
               <div class="action-buttons">
-                <button class="btn-icon btn-edit" (click)="openEditModal(court)">✏️ Sửa</button>
-                <button class="btn-icon btn-open" (click)="changeStatus(court, 'AVAILABLE')">🟢 Mở</button>
-                <button class="btn-icon btn-maintenance" (click)="changeStatus(court, 'MAINTENANCE')">🛠️ Bảo trì</button>
-                <button class="btn-icon btn-delete" (click)="changeStatus(court, 'INACTIVE')">🚫 Ẩn</button>
+                <button class="btn-icon btn-edit" (click)="openEditModal(court)">Sua</button>
+                <button class="btn-icon btn-open" (click)="changeStatus(court, 'AVAILABLE')">Mo</button>
+                <button class="btn-icon btn-maintenance" (click)="changeStatus(court, 'MAINTENANCE')">Bao tri</button>
+                <button class="btn-icon btn-delete" (click)="changeStatus(court, 'INACTIVE')">An</button>
               </div>
             </td>
           </tr>
         } @empty {
           <tr>
-            <td colspan="5" class="empty-text">{{ loading() ? 'Đang tải danh sách sân...' : 'Chưa có sân nào.' }}</td>
+            <td colspan="5" class="empty-text">{{ loading() ? 'Dang tai danh sach san...' : 'Chua co san nao.' }}</td>
           </tr>
         }
       </tbody>
@@ -160,38 +156,38 @@
     <div class="modal-overlay" (click)="showModal.set(false)">
       <div class="modal-card" (click)="$event.stopPropagation()">
         <div class="modal-header">
-          <h3>{{ isEdit() ? 'Sửa sân' : 'Thêm sân mới' }}</h3>
+          <h3>{{ isEdit() ? 'Sua san' : 'Them san moi' }}</h3>
           <button class="close-btn" (click)="showModal.set(false)">x</button>
         </div>
         <form [formGroup]="courtForm" (ngSubmit)="onSubmit()">
           <div class="modal-body">
             <div class="form-group">
-              <label class="form-label">Mã sân <span class="required">*</span></label>
+              <label class="form-label">Ma san <span class="required">*</span></label>
               <input type="text" formControlName="code" class="form-input" placeholder="COURT-11">
-              @if (showError('code')) { <span class="field-error">Mã sân là bắt buộc</span> }
+              @if (showError('code')) { <span class="field-error">Ma san la bat buoc</span> }
             </div>
             <div class="form-group">
-              <label class="form-label">Giá theo giờ <span class="required">*</span></label>
+              <label class="form-label">Gia theo gio <span class="required">*</span></label>
               <input type="number" formControlName="basePricePerHour" class="form-input" min="1">
-              @if (showError('basePricePerHour')) { <span class="field-error">Giá phải lớn hơn 0</span> }
+              @if (showError('basePricePerHour')) { <span class="field-error">Gia phai lon hon 0</span> }
             </div>
             <div class="form-group">
-              <label class="form-label">Vị trí/ghi chú</label>
+              <label class="form-label">Vi tri/ghi chu</label>
               <input type="text" formControlName="locationNote" class="form-input" placeholder="Zone A">
             </div>
             <div class="form-group">
-              <label class="form-label">Trạng thái <span class="required">*</span></label>
+              <label class="form-label">Trang thai <span class="required">*</span></label>
               <select formControlName="status" class="form-input">
-                <option value="AVAILABLE">Hoạt động</option>
-                <option value="MAINTENANCE">Bảo trì</option>
-                <option value="INACTIVE">Ngừng hoạt động</option>
+                <option value="AVAILABLE">Hoat dong</option>
+                <option value="MAINTENANCE">Bao tri</option>
+                <option value="INACTIVE">Ngung hoat dong</option>
               </select>
-              @if (showError('status')) { <span class="field-error">Trạng thái là bắt buộc</span> }
+              @if (showError('status')) { <span class="field-error">Trang thai la bat buoc</span> }
             </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" (click)="showModal.set(false)">Hủy</button>
-            <button type="submit" class="btn btn-primary">Lưu</button>
+            <button type="button" class="btn btn-secondary" (click)="showModal.set(false)">Huy</button>
+            <button type="submit" class="btn btn-primary">Luu</button>
           </div>
         </form>
       </div>

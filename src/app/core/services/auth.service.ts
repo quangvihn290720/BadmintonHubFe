@@ -21,6 +21,16 @@ export interface StaffMember {
   password?: string;
 }
 
+const toUiRole = (role?: string): 'staff' | 'admin' => {
+  switch (role) {
+    case 'THU_NGAN':
+    case 'CASHIER':
+      return 'staff';
+    default:
+      return 'admin';
+  }
+};
+
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly router = inject(Router);
@@ -60,7 +70,7 @@ export class AuthService {
       fullName: staff.name,
       username: staff.username,
       password: staff.password || 'admin123',
-      role: staff.role === 'admin' ? 'ADMIN' : 'CASHIER',
+      role: staff.role === 'admin' ? 'ADMIN' : 'THU_NGAN',
       status: 'ACTIVE'
     }, { headers }) as Observable<ApiResponse<BackendEmployee>>)
       .pipe(catchError(() => of(null)))
@@ -83,7 +93,7 @@ export class AuthService {
     if (this.apiConfig.isMockMode()) return;
     const existing = this.staffListSignal().find(s => s.id === updated.id);
     if (!existing) return;
-    const role = updated.role === 'admin' ? 'ADMIN' : 'CASHIER';
+    const role = updated.role === 'admin' ? 'ADMIN' : 'THU_NGAN';
     (this.http.patch(API_ENDPOINTS.ADMIN.EMPLOYEE_ROLE(existing.id), { role }) as Observable<ApiResponse<BackendEmployee>>)
       .pipe(catchError(() => of(null)))
       .subscribe(() => this.fetchStaff());
@@ -104,10 +114,10 @@ export class AuthService {
           if (!response.success || !response.data?.accessToken) return;
           const data = response.data;
           this.storeSession({
-            id: data.employeeId,
+            id: data.nhanvienId || data.employeeId || '',
             name: data.username,
             username: data.username,
-            role: data.role === 'CASHIER' ? 'staff' : 'admin',
+            role: toUiRole(data.role),
             backendRole: data.role,
             accessToken: data.accessToken,
             expiresAt: Date.now() + data.expiresIn * 1000
@@ -184,13 +194,15 @@ export class AuthService {
   }
 
   private toStaffMember(employee: BackendEmployee): StaffMember {
+    const name = employee.ten || employee.fullName || employee.username;
+    const backendRole = (employee.vaiTro || employee.role || 'THU_NGAN') as BackendRole;
     return {
       id: employee.id,
-      name: employee.fullName,
+      name,
       username: employee.username,
-      role: employee.role === 'CASHIER' ? 'staff' : 'admin',
-      backendRole: employee.role as BackendRole,
-      status: employee.status
+      role: toUiRole(backendRole),
+      backendRole,
+      status: employee.trangThai || employee.status
     };
   }
 }

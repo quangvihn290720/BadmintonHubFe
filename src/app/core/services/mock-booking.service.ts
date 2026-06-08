@@ -17,6 +17,23 @@ export interface ConflictResult {
   message: string;
 }
 
+interface CreateUiBookingData {
+  courtId: number;
+  courtName: string;
+  customerId: number;
+  customerName: string;
+  customerPhone: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  deposit: number;
+  totalAmount: number;
+  paymentMethod: PaymentMethod;
+  note: string;
+  staffName: string;
+  isBlacklistOverride: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class MockBookingService {
   private readonly http = inject(HttpClient);
@@ -44,7 +61,7 @@ export class MockBookingService {
     return (this.http.get(API_ENDPOINTS.BOOKINGS.SCHEDULES, {
       params: { date }
     }) as Observable<ApiResponse<BackendScheduleBooking[]>>).pipe(
-      map(response => (response.data || []).map((item: BackendScheduleBooking) => this.toUiBooking(item))),
+      map(response => (response.data || []).map(item => this.toUiBooking(item))),
       tap(bookings => {
         const otherDates = this.bookingsSignal().filter(booking => booking.date !== date);
         this.bookingsSignal.set([...otherDates, ...bookings]);
@@ -77,11 +94,11 @@ export class MockBookingService {
       return {
         hasConflict: true,
         conflictBooking: existing,
-        message: `Sân đã được đặt từ ${existing.startTime} - ${existing.endTime} (${this.getStatusLabel(existing.status)})`
+        message: `San da duoc dat tu ${existing.startTime} - ${existing.endTime} (${this.getStatusLabel(existing.status)})`
       };
     }
 
-    return { hasConflict: false, message: 'Lịch trống, có thể đặt sân' };
+    return { hasConflict: false, message: 'Lich trong, co the dat san' };
   }
 
   generateBookingCode(): string {
@@ -102,21 +119,21 @@ export class MockBookingService {
 
   createBookingAsync(data: CreateUiBookingData, optimistic?: Booking): Observable<Booking> {
     const booking = optimistic || this.optimisticBooking(data);
-
-    const courtId = this.courtApi.getBackendCourtId(data.courtId);
+    const loaisanId = this.courtApi.getBackendCourtId(data.courtId);
     const session = this.authService.getCurrentSession();
-    if (!courtId || !session) {
+
+    if (!loaisanId || !session) {
       return of(booking);
     }
 
     const body: CreateBookingRequest = {
-      customerId: this.customerService.getBackendCustomerId(data.customerId),
-      employeeId: session.id,
-      courtId,
+      khachhangId: this.customerService.getBackendCustomerId(data.customerId),
+      nhanvienId: session.id,
+      loaisanId,
       startTime: `${data.date}T${data.startTime}:00`,
       endTime: `${data.date}T${data.endTime}:00`,
       depositAmount: data.deposit,
-      depositPaymentMethod: this.toBackendPaymentMethod(data.paymentMethod),
+      depositPhuongThuc: this.toBackendPaymentMethod(data.paymentMethod),
       depositTransactionCode: `DEP-${Date.now()}`
     };
 
@@ -124,15 +141,17 @@ export class MockBookingService {
     return (this.http.post(API_ENDPOINTS.BOOKINGS.BASE, body, { headers }) as Observable<ApiResponse<CreateBookingResponse>>).pipe(
       map(response => response.data),
       map(response => ({
-        backendId: response.bookingId,
+        backendId: response.lichdatId || response.bookingId || '',
         booking: {
           ...booking,
-          code: response.bookingCode,
+          code: response.lichdatCode || response.bookingCode || booking.code,
           status: this.toUiStatus(response.status)
         }
       })),
       tap(saved => {
-        this.backendIds.set(saved.booking.id, saved.backendId);
+        if (saved.backendId) {
+          this.backendIds.set(saved.booking.id, saved.backendId);
+        }
         this.replaceBooking(booking.id, saved.booking);
         this.fetchSchedule(data.date).subscribe();
       }),
@@ -216,16 +235,16 @@ export class MockBookingService {
 
   getStatusLabel(status: BookingStatus): string {
     switch (status) {
-      case BookingStatus.Available: return 'Trống';
-      case BookingStatus.Deposited: return 'Đã cọc';
-      case BookingStatus.Playing: return 'Đang chơi';
-      case BookingStatus.Cancelled: return 'Đã hủy';
-      case BookingStatus.Completed: return 'Hoàn thành';
+      case BookingStatus.Available: return 'Trong';
+      case BookingStatus.Deposited: return 'Da coc';
+      case BookingStatus.Playing: return 'Dang choi';
+      case BookingStatus.Cancelled: return 'Da huy';
+      case BookingStatus.Completed: return 'Hoan thanh';
       default: return status;
     }
   }
 
-  getTodayStats(date: string, simulatedTime: string = '12:00'): { available: number; deposited: number; playing: number; revenue: number } {
+  getTodayStats(date: string, simulatedTime = '12:00'): { available: number; deposited: number; playing: number; revenue: number } {
     const todayBookings = this.getBookingsByDate(date);
     const deposited = todayBookings.filter(b => b.status === BookingStatus.Deposited).length;
     const playing = todayBookings.filter(b => b.status === BookingStatus.Playing).length;
@@ -244,9 +263,8 @@ export class MockBookingService {
       );
       if (isOccupied) occupiedCourts++;
     }
-    const available = totalCourts - occupiedCourts;
 
-    return { available, deposited, playing, revenue };
+    return { available: totalCourts - occupiedCourts, deposited, playing, revenue };
   }
 
   cancelBooking(bookingId: number): void {
@@ -257,7 +275,7 @@ export class MockBookingService {
       (this.http.post(API_ENDPOINTS.BOOKINGS.CANCEL(backendId), {
         reason: 'Customer requested cancellation',
         refundAmount: 0,
-        refundPaymentMethod: 'CASH',
+        refundPaymentMethod: 'TIEN_MAT',
         transactionCode: `RF-${Date.now()}`
       }, { headers: new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID() }) }) as Observable<ApiResponse<unknown>>)
         .pipe(catchError(() => of(null)))
@@ -274,8 +292,8 @@ export class MockBookingService {
       this.timesOverlap(b.startTime, b.endTime, startTime, endTime)
     );
     return existing
-      ? { hasConflict: true, conflictBooking: existing, message: `Sân đã có lịch từ ${existing.startTime} - ${existing.endTime}` }
-      : { hasConflict: false, message: 'Lịch trống, có thể đặt sân' };
+      ? { hasConflict: true, conflictBooking: existing, message: `San da co lich tu ${existing.startTime} - ${existing.endTime}` }
+      : { hasConflict: false, message: 'Lich trong, co the dat san' };
   }
 
   updateBookingSchedule(bookingId: number, courtId: number, courtName: string, date: string, startTime: string, endTime: string): void {
@@ -296,8 +314,7 @@ export class MockBookingService {
       const hash = bookingId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
       return staffs[hash % staffs.length].name;
     }
-    const current = this.authService.currentUser();
-    return current ? current.name : 'Nguyễn Văn A';
+    return this.authService.currentUser()?.name || 'Nhan vien';
   }
 
   private optimisticBooking(data: CreateUiBookingData): Booking {
@@ -311,51 +328,65 @@ export class MockBookingService {
   }
 
   private toUiBooking(item: BackendScheduleBooking): Booking {
-    const uiCourtId = this.courtApi.getUiCourtId(item.courtId) || this.nextId;
-    const existingId = [...this.backendIds.entries()].find(([, backendId]) => backendId === item.bookingId)?.[0];
+    const backendCourtId = item.loaiSanId || item.courtId || '';
+    const backendBookingId = item.lichDatId || item.bookingId || '';
+    const bookingCode = item.maBooking || item.bookingCode || backendBookingId || this.generateBookingCode();
+    const startTime = item.gioBatDau || item.startTime || new Date().toISOString();
+    const endTime = item.gioKetThuc || item.endTime || startTime;
+    const uiCourtId = this.courtApi.getUiCourtId(backendCourtId) || this.nextId;
+    const existingId = [...this.backendIds.entries()].find(([, id]) => id === backendBookingId)?.[0];
     const id = existingId || this.nextId++;
-    this.backendIds.set(id, item.bookingId);
 
-    const uiCustomerId = item.customerId ? (this.customerService.getAllCustomers().find(c => c.backendId === item.customerId)?.id || 0) : 0;
+    if (backendBookingId) {
+      this.backendIds.set(id, backendBookingId);
+    }
+
+    const customerBackendId = item.khachHangId || item.customerId;
+    const uiCustomerId = customerBackendId
+      ? (this.customerService.getAllCustomers().find(c => c.backendId === customerBackendId)?.id || 0)
+      : 0;
     const court = this.courtApi.courts().find(c => c.id === uiCourtId);
     const courtType = court?.type || 'standard';
-    const startTimeStr = item.startTime.slice(11, 16);
-    const endTimeStr = item.endTime.slice(11, 16);
-    
-    // Use the backend courtAmount if available and positive, otherwise calculate scheduled amount
+    const startTimeStr = startTime.slice(11, 16);
+    const endTimeStr = endTime.slice(11, 16);
     const calc = this.pricingService.calculatePrice(courtType, startTimeStr, endTimeStr, false);
-    const totalAmount = (item.courtAmount && item.courtAmount > 0) ? item.courtAmount : (calc ? calc.totalAmount : 0);
+    const courtAmount = item.tongTienSan ?? item.courtAmount ?? 0;
+    const serviceAmount = item.tongTienDichVu ?? item.serviceAmount ?? 0;
+    const overtimeAmount = item.phuThuLoGio ?? item.overtimeAmount ?? 0;
+    const depositAmount = item.tienDaCoc ?? item.depositAmount ?? 0;
+    const finalAmount = item.tongThanhToan ?? item.finalAmount ?? 0;
+    const serviceItems = item.chiTietDichVus || item.serviceItems || [];
 
     return {
       id,
-      code: item.bookingCode,
+      code: bookingCode,
       courtId: uiCourtId,
-      courtName: item.courtCode,
+      courtName: item.kyHieuSoSan || item.courtCode || this.courtApi.getCourtName(uiCourtId),
       customerId: uiCustomerId,
-      customerName: item.customerName || item.bookingCode,
-      customerPhone: item.customerPhone || '',
-      date: item.startTime.slice(0, 10),
+      customerName: item.tenKhachHang || item.customerName || bookingCode,
+      customerPhone: item.soDienThoaiKhachHang || item.customerPhone || '',
+      date: startTime.slice(0, 10),
       startTime: startTimeStr,
       endTime: endTimeStr,
-      status: this.toUiStatus(item.status),
-      deposit: item.depositAmount || 0,
-      totalAmount,
-      overtimeAmount: item.overtimeAmount || 0,
-      checkoutAmount: item.finalAmount || 0,
-      checkoutTime: item.actualEndTime ? item.actualEndTime.slice(11, 16) : undefined,
+      status: this.toUiStatus(item.trangThai || item.status || 'DA_COC'),
+      deposit: depositAmount,
+      totalAmount: courtAmount > 0 ? courtAmount : calc.totalAmount,
+      overtimeAmount,
+      checkoutAmount: finalAmount,
+      checkoutTime: (item.gioKetThucThucTe || item.actualEndTime || '').slice(11, 16) || undefined,
       paymentMethod: PaymentMethod.Cash,
       note: '',
-      staffName: this.getStaffNameForBooking(item.bookingId),
-      createdAt: item.startTime,
+      staffName: this.getStaffNameForBooking(backendBookingId),
+      createdAt: startTime,
       isBlacklistOverride: false,
-      additionalServices: (item.serviceItems && item.serviceItems.length > 0)
-        ? item.serviceItems.map(s => ({
-            name: s.name,
-            price: s.unitPrice,
-            quantity: s.quantity
+      additionalServices: serviceItems.length > 0
+        ? serviceItems.map(service => ({
+            name: service.tenDichVu || service.name || 'Dich vu',
+            price: service.donGia ?? service.unitPrice ?? 0,
+            quantity: service.soLuong ?? service.quantity ?? 0
           }))
-        : (item.serviceAmount && item.serviceAmount > 0)
-          ? [{ name: 'Dịch vụ phụ trợ', price: item.serviceAmount, quantity: 1 }]
+        : serviceAmount > 0
+          ? [{ name: 'Dich vu phu tro', price: serviceAmount, quantity: 1 }]
           : []
     };
   }
@@ -370,13 +401,17 @@ export class MockBookingService {
 
   private toUiStatus(status: string): BookingStatus {
     switch (status) {
+      case 'DA_COC':
       case 'DEPOSITED':
       case 'PENDING_DEPOSIT':
         return BookingStatus.Deposited;
+      case 'DANG_CHOI':
       case 'PLAYING':
         return BookingStatus.Playing;
+      case 'HOAN_THANH':
       case 'COMPLETED':
         return BookingStatus.Completed;
+      case 'DA_HUY':
       case 'CANCELLED':
       case 'NO_SHOW':
         return BookingStatus.Cancelled;
@@ -388,12 +423,12 @@ export class MockBookingService {
   private toBackendPaymentMethod(method: PaymentMethod): string {
     switch (method) {
       case PaymentMethod.BankTransfer:
-        return 'BANK_TRANSFER';
+        return 'CHUYEN_KHOAN';
       case PaymentMethod.MomoQR:
-        return 'QR_CODE';
+        return 'MOMO';
       case PaymentMethod.Cash:
       default:
-        return 'CASH';
+        return 'TIEN_MAT';
     }
   }
 
@@ -412,21 +447,4 @@ export class MockBookingService {
     const newM = total % 60;
     return `${newH.toString().padStart(2, '0')}:${newM.toString().padStart(2, '0')}`;
   }
-}
-
-interface CreateUiBookingData {
-  courtId: number;
-  courtName: string;
-  customerId: number;
-  customerName: string;
-  customerPhone: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  deposit: number;
-  totalAmount: number;
-  paymentMethod: PaymentMethod;
-  note: string;
-  staffName: string;
-  isBlacklistOverride: boolean;
 }

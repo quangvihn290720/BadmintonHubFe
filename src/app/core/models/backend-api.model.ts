@@ -1,80 +1,120 @@
 export type Uuid = string;
 
-export interface BackendCourt {
+export interface LoaiSanApi {
   id: Uuid;
-  code: string;
-  basePricePerHour: number;
-  locationNote: string;
-  status: 'AVAILABLE' | 'ACTIVE' | 'MAINTENANCE' | 'INACTIVE' | string;
+  kyHieuSoSan?: string;
+  giaCoBanTheoGio?: number;
+  viTriText?: string;
+  trangThaiVanHanh?: 'SAN_SONG' | 'BAO_TRI_LUOI' | string;
+  code?: string;
+  basePricePerHour?: number;
+  locationNote?: string;
+  status?: string;
 }
 
-export interface BackendServiceItem {
+export interface DichVuApi {
   id: Uuid;
-  name: string;
-  type: string;
-  price: number;
-  stockQuantity: number;
-  status: 'ACTIVE' | 'INACTIVE' | string;
+  tenDichVu?: string;
+  loaiDichVu?: 'NUOC' | 'THUE_VOT' | 'DAN_LUOI' | 'BAN_CAU' | string;
+  giaBan?: number;
+  tonKho?: number;
+  name?: string;
+  type?: string;
+  price?: number;
+  stockQuantity?: number;
+  trangThai?: string;
+  status?: string;
 }
 
-export interface BackendPromotion {
+export interface KhuyenMaiApi {
   id: Uuid;
-  code: string;
-  discountType: 'PERCENTAGE' | 'FIXED_AMOUNT' | string;
-  discountValue: number;
-  remainingQuantity: number;
-  expiredAt: string;
-  status: string;
+  maCode?: string;
+  loaiGiamGia?: 'PERCENT' | 'FIXED_AMOUNT' | string;
+  giaTriGiam?: number;
+  soLuongConLai?: number;
+  hanSuDung?: string;
+  code?: string;
+  discountValue?: number;
+  remainingQuantity?: number;
+  expiredAt?: string;
+  trangThai?: string;
+  status?: string;
 }
 
-export interface BackendScheduleBookingServiceItem {
-  serviceItemId: Uuid;
-  name: string;
-  quantity: number;
-  unitPrice: number;
-  lineTotal: number;
+export interface ChiTietDichVuApi {
+  dichVuId?: Uuid;
+  tenDichVu?: string;
+  soLuong?: number;
+  donGia?: number;
+  thanhTien?: number;
+  name?: string;
+  quantity?: number;
+  unitPrice?: number;
 }
 
-export interface BackendScheduleBooking {
-  bookingId: Uuid;
-  bookingCode: string;
-  courtId: Uuid;
-  courtCode: string;
-  startTime: string;
-  endTime: string;
-  status: string;
-  depositAmount: number;
+export interface LichDatScheduleApi {
+  lichDatId?: Uuid;
+  maBooking?: string;
+  loaiSanId?: Uuid;
+  kyHieuSoSan?: string;
+  gioBatDau?: string;
+  gioKetThuc?: string;
+  trangThai: string;
+  tienDaCoc?: number;
+  khachHangId?: Uuid;
+  tenKhachHang?: string;
+  soDienThoaiKhachHang?: string;
+  gioKetThucThucTe?: string | null;
+  tongTienSan?: number;
+  phuThuLoGio?: number;
+  tongTienDichVu?: number;
+  giamGia?: number;
+  tongThanhToan?: number;
+  chiTietDichVus?: ChiTietDichVuApi[];
+  bookingId?: Uuid;
+  bookingCode?: string;
+  courtId?: Uuid;
+  courtCode?: string;
+  startTime?: string;
+  endTime?: string;
+  status?: string;
+  depositAmount?: number;
   customerId?: Uuid;
   customerName?: string;
   customerPhone?: string;
-
   actualEndTime?: string | null;
   courtAmount?: number;
   overtimeAmount?: number;
   serviceAmount?: number;
   discountAmount?: number;
   finalAmount?: number;
-  serviceItems?: BackendScheduleBookingServiceItem[];
+  serviceItems?: ChiTietDichVuApi[];
 }
 
-export interface CreateBookingRequest {
-  customerId?: Uuid | null;
-  employeeId: Uuid;
-  courtId: Uuid;
+export interface CreateLichDatRequest {
+  khachhangId?: Uuid | null;
+  nhanvienId: Uuid;
+  loaisanId: Uuid;
   startTime: string;
   endTime: string;
   depositAmount: number;
-  depositPaymentMethod: string;
+  depositPhuongThuc: string;
   depositTransactionCode?: string;
+  customerId?: Uuid | null;
+  employeeId?: Uuid;
+  courtId?: Uuid;
+  depositPaymentMethod?: string;
 }
 
-export interface CreateBookingResponse {
-  bookingId: Uuid;
-  bookingCode: string;
+export interface CreateLichDatResponse {
+  lichdatId?: Uuid;
+  lichdatCode?: string;
   status: string;
+  bookingId?: Uuid;
+  bookingCode?: string;
 }
 
-export interface DailyRevenueReport {
+export interface BaoCaoDoanhThuNgayApi {
   date: string;
   totalCourtAmount: number;
   totalServiceAmount: number;
@@ -89,31 +129,54 @@ export interface DailyRevenueReport {
   paymentBreakdownByMethod: Record<string, number>;
 }
 
-export interface BackendCustomer {
+export interface KhachHangApi {
   id: Uuid;
-  fullName: string;
-  phoneNumber: string;
+  ten?: string;
+  soDienThoai?: string;
   email: string | null;
-  status: string;
-  totalBookings: number;
-  createdAt: string;
+  trangThai?: string;
+  totalBookings?: number;
+  fullName?: string;
+  phoneNumber?: string;
+  status?: string;
+  totalLichDats?: number;
+  createdAt?: string;
 }
 
-export interface BackendEmployee {
+export interface NhanVienApi {
   id: Uuid;
-  fullName: string;
+  ten?: string;
   username: string;
-  role: 'ADMIN' | 'MANAGER' | 'CASHIER' | string;
-  status: string;
+  vaiTro?: 'ADMIN' | 'QUAN_LY' | 'THU_NGAN' | string;
+  trangThai?: string;
+  fullName?: string;
+  role?: 'ADMIN' | 'QUAN_LY' | 'THU_NGAN' | 'MANAGER' | 'CASHIER' | string;
+  status?: string;
 }
 
-export interface BackendPriceRule {
+export interface KhungGioApi {
   id: Uuid;
-  name: string;
-  startTime: string;
-  endTime: string;
-  multiplier: number;
-  effectiveFrom: string;
-  effectiveTo: string | null;
-  status: string;
+  gioBatDau?: string;
+  gioKetThuc?: string;
+  heSoGia?: number;
+  name?: string;
+  startTime?: string;
+  endTime?: string;
+  multiplier?: number;
+  effectiveFrom?: string;
+  effectiveTo?: string | null;
+  status?: string;
 }
+
+// Compatibility aliases while the UI layer finishes migrating.
+export type BackendCourt = LoaiSanApi;
+export type BackendServiceItem = DichVuApi;
+export type BackendPromotion = KhuyenMaiApi;
+export type BackendScheduleBookingServiceItem = ChiTietDichVuApi;
+export type BackendScheduleBooking = LichDatScheduleApi;
+export type CreateBookingRequest = CreateLichDatRequest;
+export type CreateBookingResponse = CreateLichDatResponse;
+export type DailyRevenueReport = BaoCaoDoanhThuNgayApi;
+export type BackendCustomer = KhachHangApi;
+export type BackendEmployee = NhanVienApi;
+export type BackendPriceRule = KhungGioApi;

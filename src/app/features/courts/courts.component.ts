@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { BackendCourt } from '../../core/models/backend-api.model';
 import { CourtApiService } from '../../core/services/court-api.service';
@@ -26,18 +26,25 @@ export class CourtsComponent {
     const half = Math.ceil(list.length / 2);
     return list.slice(half);
   });
+  readonly filteredCourts = computed(() => {
+    const query = this.searchQuery().trim().toLowerCase();
+    if (!query) return this.courts();
+    return this.courts().filter(court =>
+      this.courtCode(court).toLowerCase().includes(query) ||
+      this.courtLocation(court).toLowerCase().includes(query) ||
+      this.courtStatus(court).toLowerCase().includes(query)
+    );
+  });
   readonly loading = this.courtApi.loading;
-  readonly searchQuery = signal<string>('');
-  readonly showModal = signal<boolean>(false);
-  readonly isEdit = signal<boolean>(false);
-  readonly submitted = signal<boolean>(false);
+  readonly searchQuery = signal('');
+  readonly showModal = signal(false);
+  readonly isEdit = signal(false);
+  readonly submitted = signal(false);
   readonly selectedCourt = signal<BackendCourt | null>(null);
   readonly error = signal<string | null>(null);
-
-  // Confirmation Dialog Signals
-  readonly showConfirmDialog = signal<boolean>(false);
-  readonly confirmDialogTitle = signal<string>('');
-  readonly confirmDialogMessage = signal<string>('');
+  readonly showConfirmDialog = signal(false);
+  readonly confirmDialogTitle = signal('');
+  readonly confirmDialogMessage = signal('');
   readonly confirmDialogType = signal<'info' | 'warning' | 'error'>('info');
   readonly confirmDialogActions = signal<Array<{ label: string; type: 'primary' | 'danger' | 'secondary'; handler: () => void }>>([]);
 
@@ -48,16 +55,6 @@ export class CourtsComponent {
     status: ['AVAILABLE', [Validators.required]]
   });
 
-  readonly filteredCourts = computed(() => {
-    const query = this.searchQuery().trim().toLowerCase();
-    if (!query) return this.courts();
-    return this.courts().filter(court =>
-      court.code.toLowerCase().includes(query) ||
-      (court.locationNote || '').toLowerCase().includes(query) ||
-      court.status.toLowerCase().includes(query)
-    );
-  });
-
   constructor() {
     this.reload();
   }
@@ -65,7 +62,7 @@ export class CourtsComponent {
   reload(): void {
     this.error.set(null);
     this.courtApi.loadAdminCourts().subscribe({
-      error: err => this.error.set(err.error?.message || 'Không tải được danh sách sân.')
+      error: err => this.error.set(err.error?.message || 'Khong tai duoc danh sach san.')
     });
   }
 
@@ -87,10 +84,10 @@ export class CourtsComponent {
     this.selectedCourt.set(court);
     this.submitted.set(false);
     this.courtForm.setValue({
-      code: court.code,
-      basePricePerHour: Number(court.basePricePerHour),
-      locationNote: court.locationNote || '',
-      status: court.status
+      code: this.courtCode(court),
+      basePricePerHour: this.courtBasePrice(court),
+      locationNote: this.courtLocation(court),
+      status: this.courtStatus(court)
     });
     this.showModal.set(true);
   }
@@ -99,6 +96,7 @@ export class CourtsComponent {
     this.submitted.set(true);
     this.error.set(null);
     if (this.courtForm.invalid) return;
+
     const data = this.courtForm.getRawValue();
     const request = {
       code: data.code.trim(),
@@ -116,18 +114,18 @@ export class CourtsComponent {
         this.showModal.set(false);
         this.reload();
       },
-      error: err => this.error.set(err.error?.message || 'Không lưu được sân.')
+      error: err => this.error.set(err.error?.message || 'Khong luu duoc san.')
     });
   }
 
   changeStatus(court: BackendCourt, status: string): void {
-    const statusLabel = status === 'AVAILABLE' ? 'Hoạt động' : status === 'MAINTENANCE' ? 'Bảo trì' : 'Ngừng hoạt động';
-    this.confirmDialogTitle.set('Xác nhận đổi trạng thái');
-    this.confirmDialogMessage.set(`Bạn có chắc chắn muốn thay đổi trạng thái của sân ${court.code} sang "${statusLabel}"?`);
+    const statusLabel = status === 'AVAILABLE' ? 'Hoat dong' : status === 'MAINTENANCE' ? 'Bao tri' : 'Ngung hoat dong';
+    this.confirmDialogTitle.set('Xac nhan doi trang thai');
+    this.confirmDialogMessage.set(`Ban co chac chan muon thay doi trang thai cua san ${this.courtCode(court)} sang "${statusLabel}"?`);
     this.confirmDialogType.set(status === 'INACTIVE' ? 'warning' : 'info');
     this.confirmDialogActions.set([
       {
-        label: 'Xác nhận',
+        label: 'Xac nhan',
         type: status === 'INACTIVE' ? 'danger' : 'primary',
         handler: () => {
           this.showConfirmDialog.set(false);
@@ -136,14 +134,6 @@ export class CourtsComponent {
       }
     ]);
     this.showConfirmDialog.set(true);
-  }
-
-  private executeChangeStatus(court: BackendCourt, status: string): void {
-    this.error.set(null);
-    this.courtApi.updateCourtStatus(court.id, status).subscribe({
-      next: () => this.reload(),
-      error: err => this.error.set(err.error?.message || 'Không cập nhật được trạng thái sân.')
-    });
   }
 
   onSearch(event: Event): void {
@@ -156,5 +146,29 @@ export class CourtsComponent {
 
   formatCurrency(amount: number): string {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+  }
+
+  courtCode(court: BackendCourt): string {
+    return court.code || court.kyHieuSoSan || '';
+  }
+
+  courtBasePrice(court: BackendCourt): number {
+    return Number(court.basePricePerHour ?? court.giaCoBanTheoGio ?? 0);
+  }
+
+  courtLocation(court: BackendCourt): string {
+    return court.locationNote || court.viTriText || '';
+  }
+
+  courtStatus(court: BackendCourt): string {
+    return court.status || court.trangThaiVanHanh || 'AVAILABLE';
+  }
+
+  private executeChangeStatus(court: BackendCourt, status: string): void {
+    this.error.set(null);
+    this.courtApi.updateCourtStatus(court.id, status).subscribe({
+      next: () => this.reload(),
+      error: err => this.error.set(err.error?.message || 'Khong cap nhat duoc trang thai san.')
+    });
   }
 }

@@ -159,15 +159,16 @@ export class MockCustomerService {
   }
 
   private toUiCustomer(item: BackendCustomer, index: number): Customer {
+    const status = item.trangThai || item.status || 'ACTIVE';
     return {
       id: index + 1,
       backendId: item.id,
-      name: item.fullName,
-      phone: item.phoneNumber,
+      name: item.ten || item.fullName || `Khach hang ${index + 1}`,
+      phone: item.soDienThoai || item.phoneNumber || '',
       email: item.email || '',
-      isBlacklisted: item.status === 'BLACKLISTED',
-      blacklistReason: item.status === 'BLACKLISTED' ? 'Backend customer status is BLACKLISTED' : undefined,
-      totalBookings: Number(item.totalBookings || 0),
+      isBlacklisted: status === 'BLACKLIST' || status === 'BLACKLISTED',
+      blacklistReason: status === 'BLACKLIST' || status === 'BLACKLISTED' ? 'Backend customer status is BLACKLISTED' : undefined,
+      totalBookings: Number(item.totalBookings ?? item.totalLichDats ?? 0),
       joinDate: item.createdAt?.slice(0, 10) || new Date().toISOString().split('T')[0],
       points: 0
     };
