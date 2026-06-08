@@ -3,7 +3,7 @@ import { StatCardComponent } from '../../shared/components/stat-card/stat-card.c
 import { PricingService } from '../../core/services/pricing.service';
 import { ReportApiService } from '../../core/services/report-api.service';
 import { DailyRevenueReport } from '../../core/models/backend-api.model';
-import { MockBookingService } from '../../core/services/mock-booking.service';
+import { BookingService } from '../../core/services/booking.service';
 import { AuthService } from '../../core/services/auth.service';
 import { BookingStatus, Booking } from '../../core/models';
 
@@ -17,7 +17,7 @@ import { BookingStatus, Booking } from '../../core/models';
 export class ReportsComponent {
   private readonly pricingService = inject(PricingService);
   private readonly reportApi = inject(ReportApiService);
-  private readonly bookingService = inject(MockBookingService);
+  private readonly bookingService = inject(BookingService);
   private readonly authService = inject(AuthService);
 
   readonly selectedDate = signal<string>(new Date().toISOString().split('T')[0]);
@@ -258,9 +258,15 @@ export class ReportsComponent {
 
   paymentMethodLabel(method: string): string {
     switch (method) {
-      case 'CASH': return 'Tiền mặt';
-      case 'BANK_TRANSFER': return 'Chuyển khoản';
-      case 'QR_CODE': return 'QR / Momo';
+      case 'TIEN_MAT':
+      case 'CASH':
+        return 'Tiền mặt';
+      case 'CHUYEN_KHOAN':
+      case 'BANK_TRANSFER':
+        return 'Chuyển khoản';
+      case 'MOMO':
+      case 'QR_CODE':
+        return 'QR / Momo';
       default: return method;
     }
   }

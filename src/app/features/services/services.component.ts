@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '../../core/services/auth.service';
 import { AdditionalServiceService, ServiceItem } from '../../core/services/additional-service.service';
@@ -19,13 +19,11 @@ export class ServicesComponent {
   readonly services = this.additionalService.services;
   readonly isAdmin = computed(() => this.authService.currentUser()?.role === 'admin');
 
-  // Confirmation Dialog Signals
   readonly showConfirmDialog = signal<boolean>(false);
   readonly confirmDialogTitle = signal<string>('');
   readonly confirmDialogMessage = signal<string>('');
   readonly confirmDialogActions = signal<Array<{ label: string; type: 'primary' | 'danger' | 'secondary'; handler: () => void }>>([]);
 
-  // Search Signal
   readonly searchQuery = signal<string>('');
   readonly showModal = signal<boolean>(false);
   readonly isEdit = signal<boolean>(false);
@@ -40,23 +38,15 @@ export class ServicesComponent {
   readonly filteredServices = computed(() => {
     const query = this.searchQuery().toLowerCase().trim();
     const list = this.services();
-
-    if (!query) return list;
-
-    return list.filter(s => s.name.toLowerCase().includes(query));
+    if (!query) {
+      return list;
+    }
+    return list.filter(service => service.name.toLowerCase().includes(query));
   });
 
   showError(field: 'name' | 'price'): boolean {
-    let c;
-    switch (field) {
-      case 'name':
-        c = this.serviceForm.controls.name;
-        break;
-      case 'price':
-        c = this.serviceForm.controls.price;
-        break;
-    }
-    return !!(this.submitted() && c && c.invalid);
+    const control = field === 'name' ? this.serviceForm.controls.name : this.serviceForm.controls.price;
+    return this.submitted() && control.invalid;
   }
 
   openAddModal(): void {
@@ -79,11 +69,11 @@ export class ServicesComponent {
   }
 
   deleteService(id: number): void {
-    const item = this.services().find(s => s.id === id);
+    const item = this.services().find(service => service.id === id);
     const name = item ? item.name : '';
 
     this.confirmDialogTitle.set('Xác nhận xóa');
-    this.confirmDialogMessage.set(`Bạn có chắc chắn muốn xóa dịch vụ "${name}"? Hành động này không thể hoàn tác.`);
+    this.confirmDialogMessage.set(`Bạn có chắc muốn xóa dịch vụ "${name}"? Hành động này không thể hoàn tác.`);
     this.confirmDialogActions.set([
       {
         label: 'Xác nhận xóa',
@@ -99,7 +89,9 @@ export class ServicesComponent {
 
   onSubmit(): void {
     this.submitted.set(true);
-    if (this.serviceForm.invalid) return;
+    if (this.serviceForm.invalid) {
+      return;
+    }
 
     const data = this.serviceForm.getRawValue();
     if (this.isEdit()) {
@@ -111,8 +103,7 @@ export class ServicesComponent {
   }
 
   onSearch(event: Event): void {
-    const val = (event.target as HTMLInputElement).value;
-    this.searchQuery.set(val);
+    this.searchQuery.set((event.target as HTMLInputElement).value);
   }
 
   formatCurrency(amount: number): string {

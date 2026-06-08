@@ -168,6 +168,36 @@ export interface KhungGioApi {
   status?: string;
 }
 
+export interface CheckOutLichDatResponse {
+  lichdatId?: Uuid;
+  lichdatCode?: string;
+  status: string;
+  loaisanAmount?: number;
+  overtimeAmount?: number;
+  serviceAmount?: number;
+  discountAmount?: number;
+  depositAmount?: number;
+  finalAmount?: number;
+  thanhtoanId?: Uuid | null;
+}
+
+export interface ThanhToanApi {
+  id: Uuid;
+  thanhtoanType?: string;
+  thanhtoanMethod?: string;
+  amount?: number;
+  status?: string;
+  paidAt?: string;
+}
+
+export interface LichDatDetailApi extends LichDatScheduleApi {
+  id?: Uuid;
+  nhanvienId?: Uuid;
+  khuyenmaiId?: Uuid | null;
+  cancelledReason?: string | null;
+  thanhtoans?: ThanhToanApi[];
+}
+
 // Compatibility aliases while the UI layer finishes migrating.
 export type BackendCourt = LoaiSanApi;
 export type BackendServiceItem = DichVuApi;

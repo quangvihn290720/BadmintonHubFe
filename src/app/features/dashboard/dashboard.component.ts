@@ -1,10 +1,10 @@
 import { Component, OnInit, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
 import { Router } from '@angular/router';
 import { StatCardComponent } from '../../shared/components/stat-card/stat-card.component';
-import { MockBookingService } from '../../core/services/mock-booking.service';
+import { BookingService } from '../../core/services/booking.service';
 import { BookingStateService } from '../../core/services/booking-state.service';
 import { PricingService } from '../../core/services/pricing.service';
-import { MockCustomerService } from '../../core/services/mock-customer.service';
+import { CustomerService } from '../../core/services/customer.service';
 import { AdditionalServiceService, ServiceItem } from '../../core/services/additional-service.service';
 import { BookingStatus, Court, Booking, PaymentMethod, TimeSlot } from '../../core/models';
 import { CourtApiService } from '../../core/services/court-api.service';
@@ -17,10 +17,10 @@ import { CourtApiService } from '../../core/services/court-api.service';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class DashboardComponent implements OnInit {
-  public readonly bookingService = inject(MockBookingService);
+  public readonly bookingService = inject(BookingService);
   private readonly bookingState = inject(BookingStateService);
   private readonly pricingService = inject(PricingService);
-  private readonly customerService = inject(MockCustomerService);
+  private readonly customerService = inject(CustomerService);
   private readonly additionalService = inject(AdditionalServiceService);
   private readonly courtApi = inject(CourtApiService);
   private readonly router = inject(Router);
@@ -340,10 +340,14 @@ export class DashboardComponent implements OnInit {
         this.balanceDue(),
         this.checkoutPaymentMethod(),
         this.simulatedTime()
-      );
-      
-      this.customerService.addCompletedBooking(booking.customerPhone, booking.customerName, grandTotal);
-      this.showCheckoutModal.set(false);
+      ).subscribe({
+        next: () => {
+          this.customerService.addCompletedBooking(booking.customerPhone, booking.customerName, grandTotal);
+          this.showCheckoutModal.set(false);
+          this.showToast('Hoàn tất ca chơi và thanh toán thành công!', 'success');
+        },
+        error: () => this.showToast('Không thể hoàn tất ca chơi. Vui lòng thử lại.', 'error')
+      });
     }
   }
 

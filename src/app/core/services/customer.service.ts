@@ -5,12 +5,10 @@ import { Customer } from '../models';
 import { API_ENDPOINTS } from '../constants/api-endpoints';
 import { ApiResponse } from '../models/api-response.model';
 import { BackendCustomer } from '../models/backend-api.model';
-import { ApiConfigService } from './api-config.service';
 
 @Injectable({ providedIn: 'root' })
-export class MockCustomerService {
+export class CustomerService {
   private readonly http = inject(HttpClient);
-  private readonly apiConfig = inject(ApiConfigService);
 
   private readonly customersSignal = signal<Customer[]>([]);
   readonly customers = this.customersSignal.asReadonly();

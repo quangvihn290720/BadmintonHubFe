@@ -5,8 +5,8 @@ import { Router } from '@angular/router';
 import { of } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 import { BookingStateService } from '../../../core/services/booking-state.service';
-import { MockBookingService, ConflictResult } from '../../../core/services/mock-booking.service';
-import { MockCustomerService } from '../../../core/services/mock-customer.service';
+import { BookingService, ConflictResult } from '../../../core/services/booking.service';
+import { CustomerService } from '../../../core/services/customer.service';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { Court, Customer } from '../../../core/models';
 import { CourtApiService } from '../../../core/services/court-api.service';
@@ -28,8 +28,8 @@ export class BookingNewComponent implements OnInit {
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly router = inject(Router);
   private readonly bookingState = inject(BookingStateService);
-  private readonly bookingService = inject(MockBookingService);
-  private readonly customerService = inject(MockCustomerService);
+  private readonly bookingService = inject(BookingService);
+  private readonly customerService = inject(CustomerService);
   private readonly courtApi = inject(CourtApiService);
 
   readonly bookingForm = this.fb.group({

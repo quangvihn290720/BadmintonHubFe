@@ -1,15 +1,15 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable, from, of } from 'rxjs';
+import { Observable, of } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';
 import { API_ENDPOINTS } from '../constants/api-endpoints';
 import { ApiResponse } from '../models/api-response.model';
 import { AuthSession, BackendRole, LoginResponse } from '../models/auth.model';
 import { BackendEmployee } from '../models/backend-api.model';
 import { ApiConfigService } from './api-config.service';
-
 import { getFriendlyErrorMessage } from '../constants/error-messages';
+import { hasAdminAccessRole } from '../utils/backend-contract.utils';
 
 export interface StaffMember {
   id: string;
@@ -47,9 +47,20 @@ export class AuthService {
   }
 
   fetchStaff(): void {
-    if (this.apiConfig.isMockMode() || !this.hasAnyRole(['ADMIN', 'MANAGER'])) return;
+    if (this.apiConfig.isMockMode() || !hasAdminAccessRole(this.readSession()?.backendRole)) {
+      return;
+    }
+
     (this.http.get(API_ENDPOINTS.STAFF.BASE) as Observable<ApiResponse<unknown[]>>)
-      .pipe(catchError(() => of({ success: false, code: 'ERROR', message: 'Error', data: [], timestamp: new Date().toISOString() })))
+      .pipe(
+        catchError(() => of({
+          success: false,
+          code: 'ERROR',
+          message: 'Error',
+          data: [],
+          timestamp: new Date().toISOString()
+        }))
+      )
       .subscribe(response => {
         const employees = (response.data || []) as BackendEmployee[];
         this.staffListSignal.set(employees.map(employee => this.toStaffMember(employee)));
@@ -63,7 +74,9 @@ export class AuthService {
   addStaff(staff: Omit<StaffMember, 'id'>): void {
     const local: StaffMember = { id: crypto.randomUUID(), ...staff };
     this.staffListSignal.update(list => [...list, local]);
-    if (this.apiConfig.isMockMode()) return;
+    if (this.apiConfig.isMockMode()) {
+      return;
+    }
 
     const headers = new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID() });
     (this.http.post(API_ENDPOINTS.ADMIN.EMPLOYEES, {
@@ -84,15 +97,24 @@ export class AuthService {
 
   updateStaff(updated: Partial<StaffMember> & { id: string }): void {
     this.staffListSignal.update(list => {
-      const idx = list.findIndex(s => s.id === updated.id);
-      if (idx === -1) return list;
+      const idx = list.findIndex(staff => staff.id === updated.id);
+      if (idx === -1) {
+        return list;
+      }
       const copy = [...list];
       copy[idx] = { ...copy[idx], ...updated } as StaffMember;
       return copy;
     });
-    if (this.apiConfig.isMockMode()) return;
-    const existing = this.staffListSignal().find(s => s.id === updated.id);
-    if (!existing) return;
+
+    if (this.apiConfig.isMockMode()) {
+      return;
+    }
+
+    const existing = this.staffListSignal().find(staff => staff.id === updated.id);
+    if (!existing) {
+      return;
+    }
+
     const role = updated.role === 'admin' ? 'ADMIN' : 'THU_NGAN';
     (this.http.patch(API_ENDPOINTS.ADMIN.EMPLOYEE_ROLE(existing.id), { role }) as Observable<ApiResponse<BackendEmployee>>)
       .pipe(catchError(() => of(null)))
@@ -100,8 +122,10 @@ export class AuthService {
   }
 
   deleteStaff(id: string): void {
-    this.staffListSignal.update(list => list.filter(s => s.id !== id));
-    if (this.apiConfig.isMockMode()) return;
+    this.staffListSignal.update(list => list.filter(staff => staff.id !== id));
+    if (this.apiConfig.isMockMode()) {
+      return;
+    }
     (this.http.patch(API_ENDPOINTS.ADMIN.EMPLOYEE_STATUS(id), { status: 'INACTIVE' }) as Observable<ApiResponse<BackendEmployee>>)
       .pipe(catchError(() => of(null)))
       .subscribe();
@@ -111,7 +135,9 @@ export class AuthService {
     return (this.http.post(API_ENDPOINTS.AUTH.LOGIN, { username, password }) as Observable<ApiResponse<LoginResponse>>)
       .pipe(
         tap(response => {
-          if (!response.success || !response.data?.accessToken) return;
+          if (!response.success || !response.data?.accessToken) {
+            return;
+          }
           const data = response.data;
           this.storeSession({
             id: data.nhanvienId || data.employeeId || '',
@@ -123,17 +149,20 @@ export class AuthService {
             expiresAt: Date.now() + data.expiresIn * 1000
           });
         }),
-        map(response => ({ success: response.success, message: response.message || 'Đăng nhập thành công.' })),
+        map(response => ({
+          success: response.success,
+          message: response.message || 'Đăng nhập thành công.'
+        })),
         catchError(err => {
-          let errorMsg = 'Không thể kết nối đến máy chủ Backend.';
+          let errorMessage = 'Không thể kết nối đến máy chủ backend.';
           if (err.status === 401) {
-            errorMsg = 'Tên đăng nhập hoặc mật khẩu không chính xác.';
+            errorMessage = 'Tên đăng nhập hoặc mật khẩu không chính xác.';
           } else if (err.error && typeof err.error === 'object') {
-            errorMsg = getFriendlyErrorMessage(err.error.code, err.error.message);
+            errorMessage = getFriendlyErrorMessage(err.error.code, err.error.message);
           }
           return of({
             success: false,
-            message: errorMsg
+            message: errorMessage
           });
         })
       );
@@ -173,7 +202,7 @@ export class AuthService {
   }
 
   getStaffName(): string {
-    return this.readSession()?.name || 'Nhan vien';
+    return this.readSession()?.name || 'Nhân viên';
   }
 
   private storeSession(session: AuthSession): void {
@@ -184,7 +213,9 @@ export class AuthService {
 
   private readSession(): AuthSession | null {
     const data = localStorage.getItem(this.STORAGE_KEY);
-    if (!data) return null;
+    if (!data) {
+      return null;
+    }
     try {
       return JSON.parse(data) as AuthSession;
     } catch {

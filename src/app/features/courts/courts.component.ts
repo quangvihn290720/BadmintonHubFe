@@ -2,6 +2,10 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { BackendCourt } from '../../core/models/backend-api.model';
 import { CourtApiService } from '../../core/services/court-api.service';
+import {
+  courtStatusLabel as formatCourtStatusLabel,
+  normalizeCourtStatusForApi
+} from '../../core/utils/backend-contract.utils';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 
 @Component({
@@ -52,7 +56,7 @@ export class CourtsComponent {
     code: ['', [Validators.required]],
     basePricePerHour: [100000, [Validators.required, Validators.min(1)]],
     locationNote: [''],
-    status: ['AVAILABLE', [Validators.required]]
+    status: ['SAN_SONG', [Validators.required]]
   });
 
   constructor() {
@@ -62,7 +66,7 @@ export class CourtsComponent {
   reload(): void {
     this.error.set(null);
     this.courtApi.loadAdminCourts().subscribe({
-      error: err => this.error.set(err.error?.message || 'Khong tai duoc danh sach san.')
+      error: err => this.error.set(err.error?.message || 'Không tải được danh sách sân.')
     });
   }
 
@@ -74,7 +78,7 @@ export class CourtsComponent {
       code: '',
       basePricePerHour: 100000,
       locationNote: '',
-      status: 'AVAILABLE'
+      status: 'SAN_SONG'
     });
     this.showModal.set(true);
   }
@@ -102,7 +106,7 @@ export class CourtsComponent {
       code: data.code.trim(),
       basePricePerHour: Number(data.basePricePerHour),
       locationNote: data.locationNote.trim(),
-      status: data.status
+      status: normalizeCourtStatusForApi(data.status)
     };
     const existing = this.selectedCourt();
     const request$ = this.isEdit() && existing
@@ -114,22 +118,24 @@ export class CourtsComponent {
         this.showModal.set(false);
         this.reload();
       },
-      error: err => this.error.set(err.error?.message || 'Khong luu duoc san.')
+      error: err => this.error.set(err.error?.message || 'Không lưu được sân.')
     });
   }
 
   changeStatus(court: BackendCourt, status: string): void {
-    const statusLabel = status === 'AVAILABLE' ? 'Hoat dong' : status === 'MAINTENANCE' ? 'Bao tri' : 'Ngung hoat dong';
-    this.confirmDialogTitle.set('Xac nhan doi trang thai');
-    this.confirmDialogMessage.set(`Ban co chac chan muon thay doi trang thai cua san ${this.courtCode(court)} sang "${statusLabel}"?`);
-    this.confirmDialogType.set(status === 'INACTIVE' ? 'warning' : 'info');
+    const nextStatus = normalizeCourtStatusForApi(status);
+    this.confirmDialogTitle.set('Xác nhận đổi trạng thái');
+    this.confirmDialogMessage.set(
+      `Bạn có chắc muốn đổi trạng thái của sân ${this.courtCode(court)} sang "${formatCourtStatusLabel(nextStatus)}"?`
+    );
+    this.confirmDialogType.set(nextStatus === 'BAO_TRI_LUOI' ? 'warning' : 'info');
     this.confirmDialogActions.set([
       {
-        label: 'Xac nhan',
-        type: status === 'INACTIVE' ? 'danger' : 'primary',
+        label: 'Xác nhận',
+        type: nextStatus === 'BAO_TRI_LUOI' ? 'danger' : 'primary',
         handler: () => {
           this.showConfirmDialog.set(false);
-          this.executeChangeStatus(court, status);
+          this.executeChangeStatus(court, nextStatus);
         }
       }
     ]);
@@ -161,14 +167,18 @@ export class CourtsComponent {
   }
 
   courtStatus(court: BackendCourt): string {
-    return court.status || court.trangThaiVanHanh || 'AVAILABLE';
+    return normalizeCourtStatusForApi(court.status || court.trangThaiVanHanh);
+  }
+
+  courtStatusLabel(court: BackendCourt): string {
+    return formatCourtStatusLabel(this.courtStatus(court));
   }
 
   private executeChangeStatus(court: BackendCourt, status: string): void {
     this.error.set(null);
     this.courtApi.updateCourtStatus(court.id, status).subscribe({
       next: () => this.reload(),
-      error: err => this.error.set(err.error?.message || 'Khong cap nhat duoc trang thai san.')
+      error: err => this.error.set(err.error?.message || 'Không cập nhật được trạng thái sân.')
     });
   }
 }

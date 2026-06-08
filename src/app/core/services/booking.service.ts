@@ -1,15 +1,21 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable, catchError, forkJoin, map, of, switchMap, tap } from 'rxjs';
+import { Observable, catchError, forkJoin, map, of, switchMap, tap, throwError } from 'rxjs';
 import { Booking, BookingStatus, PaymentMethod } from '../models';
 import { API_ENDPOINTS } from '../constants/api-endpoints';
 import { ApiResponse } from '../models/api-response.model';
-import { BackendScheduleBooking, CreateBookingRequest, CreateBookingResponse } from '../models/backend-api.model';
-import { ApiConfigService } from './api-config.service';
+import {
+  BackendScheduleBooking,
+  CheckOutLichDatResponse,
+  CreateBookingRequest,
+  CreateBookingResponse,
+  LichDatDetailApi
+} from '../models/backend-api.model';
 import { AuthService } from './auth.service';
 import { CourtApiService } from './court-api.service';
-import { MockCustomerService } from './mock-customer.service';
+import { CustomerService } from './customer.service';
 import { PricingService } from './pricing.service';
+import { normalizeScheduleBooking } from '../utils/backend-contract.utils';
 
 export interface ConflictResult {
   hasConflict: boolean;
@@ -35,12 +41,11 @@ interface CreateUiBookingData {
 }
 
 @Injectable({ providedIn: 'root' })
-export class MockBookingService {
+export class BookingService {
   private readonly http = inject(HttpClient);
-  private readonly apiConfig = inject(ApiConfigService);
   private readonly authService = inject(AuthService);
   private readonly courtApi = inject(CourtApiService);
-  private readonly customerService = inject(MockCustomerService);
+  private readonly customerService = inject(CustomerService);
   private readonly pricingService = inject(PricingService);
 
   private readonly bookingsSignal = signal<Booking[]>([]);
@@ -61,7 +66,7 @@ export class MockBookingService {
     return (this.http.get(API_ENDPOINTS.BOOKINGS.SCHEDULES, {
       params: { date }
     }) as Observable<ApiResponse<BackendScheduleBooking[]>>).pipe(
-      map(response => (response.data || []).map(item => this.toUiBooking(item))),
+      map(response => (response.data || []).map(item => this.toUiBooking(normalizeScheduleBooking(item as unknown as Record<string, unknown>) as BackendScheduleBooking))),
       tap(bookings => {
         const otherDates = this.bookingsSignal().filter(booking => booking.date !== date);
         this.bookingsSignal.set([...otherDates, ...bookings]);
@@ -197,9 +202,66 @@ export class MockBookingService {
     checkoutAmt: number,
     pm: PaymentMethod,
     timeStr: string
-  ): void {
+  ): Observable<CheckOutLichDatResponse | null> {
     const booking = this.bookingsSignal().find(b => b.id === bookingId);
-    const checkoutPayload = {
+    const backendId = this.backendIds.get(bookingId);
+
+    if (!backendId || !booking) {
+      this.applyLocalCheckout(bookingId, services, overtimeMin, overtimeAmt, checkoutAmt, pm, timeStr);
+      return of(null);
+    }
+
+    const serviceCalls = services
+      .filter(service => service.key && service.quantity > 0)
+      .map(service => (this.http.post(API_ENDPOINTS.BOOKINGS.SERVICE_ITEMS(backendId), {
+        dichVuId: service.key,
+        serviceItemId: service.key,
+        quantity: service.quantity,
+        note: service.name
+      }, { headers: new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID() }) }) as Observable<ApiResponse<unknown>>));
+
+    const addServices$: Observable<unknown> = serviceCalls.length ? forkJoin(serviceCalls) : of([]);
+
+    return addServices$.pipe(
+      switchMap(() => (this.http.post(API_ENDPOINTS.BOOKINGS.CHECKOUT(backendId), {
+        actualEndTime: `${booking.date}T${timeStr}:00`,
+        thanhtoanMethod: this.toBackendPaymentMethod(pm),
+        paymentMethod: this.toBackendPaymentMethod(pm),
+        overtimeAmount: overtimeAmt,
+        transactionCode: `FINAL-${Date.now()}`
+      }, { headers: new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID() }) }) as Observable<ApiResponse<CheckOutLichDatResponse>>)),
+      map(response => response.data),
+      tap(result => {
+        if (result) {
+          this.applyCheckoutResult(bookingId, booking, result, services, overtimeMin, overtimeAmt, pm, timeStr);
+        }
+        this.fetchBookings(booking.date);
+      }),
+      catchError(err => {
+        this.fetchBookings(booking.date);
+        return throwError(() => err);
+      })
+    );
+  }
+
+  getLichDatDetail(backendId: string): Observable<LichDatDetailApi | null> {
+    return (this.http.get(API_ENDPOINTS.BOOKINGS.DETAIL(backendId)) as Observable<ApiResponse<LichDatDetailApi>>).pipe(
+      map(response => response.data ? normalizeScheduleBooking(response.data as unknown as Record<string, unknown>) as LichDatDetailApi : null),
+      catchError(() => of(null))
+    );
+  }
+
+  private applyLocalCheckout(
+    bookingId: number,
+    services: { key?: string; name: string; price: number; quantity: number }[],
+    overtimeMin: number,
+    overtimeAmt: number,
+    checkoutAmt: number,
+    pm: PaymentMethod,
+    timeStr: string
+  ): void {
+    this.bookingsSignal.update(list => list.map(b => b.id === bookingId ? {
+      ...b,
       additionalServices: services,
       overtimeMinutes: overtimeMin,
       overtimeAmount: overtimeAmt,
@@ -207,30 +269,32 @@ export class MockBookingService {
       checkoutPaymentMethod: pm,
       checkoutTime: timeStr,
       status: BookingStatus.Completed
-    };
+    } : b));
+  }
 
-    this.bookingsSignal.update(list => list.map(b => b.id === bookingId ? { ...b, ...checkoutPayload } : b));
-
-    const backendId = this.backendIds.get(bookingId);
-    if (backendId && booking) {
-      const serviceCalls = services
-        .filter(service => service.key && service.quantity > 0)
-        .map(service => (this.http.post(API_ENDPOINTS.BOOKINGS.SERVICE_ITEMS(backendId), {
-          serviceItemId: service.key,
-          quantity: service.quantity,
-          note: service.name
-        }, { headers: new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID() }) }) as Observable<ApiResponse<unknown>>));
-
-      const addServices$: Observable<unknown> = serviceCalls.length ? forkJoin(serviceCalls) : of([]);
-      addServices$.pipe(
-        switchMap(() => (this.http.post(API_ENDPOINTS.BOOKINGS.CHECKOUT(backendId), {
-          actualEndTime: `${booking.date}T${timeStr}:00`,
-          paymentMethod: this.toBackendPaymentMethod(pm),
-          transactionCode: `FINAL-${Date.now()}`
-        }, { headers: new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID() }) }) as Observable<ApiResponse<unknown>>)),
-        catchError(() => of(null))
-      ).subscribe(() => this.fetchBookings(booking.date));
-    }
+  private applyCheckoutResult(
+    bookingId: number,
+    booking: Booking,
+    result: CheckOutLichDatResponse,
+    services: { key?: string; name: string; price: number; quantity: number }[],
+    overtimeMin: number,
+    overtimeAmt: number,
+    pm: PaymentMethod,
+    timeStr: string
+  ): void {
+    this.bookingsSignal.update(list => list.map(b => b.id === bookingId ? {
+      ...b,
+      code: result.lichdatCode || b.code,
+      status: BookingStatus.Completed,
+      totalAmount: result.loaisanAmount ?? b.totalAmount,
+      overtimeAmount: result.overtimeAmount ?? overtimeAmt,
+      overtimeMinutes: overtimeMin,
+      checkoutAmount: result.finalAmount ?? 0,
+      checkoutTime: timeStr,
+      checkoutPaymentMethod: pm,
+      additionalServices: services.length > 0 ? services : b.additionalServices,
+      deposit: result.depositAmount ?? b.deposit
+    } : b));
   }
 
   getStatusLabel(status: BookingStatus): string {
@@ -328,11 +392,12 @@ export class MockBookingService {
   }
 
   private toUiBooking(item: BackendScheduleBooking): Booking {
-    const backendCourtId = item.loaiSanId || item.courtId || '';
-    const backendBookingId = item.lichDatId || item.bookingId || '';
-    const bookingCode = item.maBooking || item.bookingCode || backendBookingId || this.generateBookingCode();
-    const startTime = item.gioBatDau || item.startTime || new Date().toISOString();
-    const endTime = item.gioKetThuc || item.endTime || startTime;
+    const normalized = normalizeScheduleBooking(item as unknown as Record<string, unknown>);
+    const backendCourtId = normalized.loaiSanId || '';
+    const backendBookingId = normalized.lichDatId || '';
+    const bookingCode = normalized.maBooking || backendBookingId || this.generateBookingCode();
+    const startTime = normalized.gioBatDau || new Date().toISOString();
+    const endTime = normalized.gioKetThuc || startTime;
     const uiCourtId = this.courtApi.getUiCourtId(backendCourtId) || this.nextId;
     const existingId = [...this.backendIds.entries()].find(([, id]) => id === backendBookingId)?.[0];
     const id = existingId || this.nextId++;
@@ -341,7 +406,7 @@ export class MockBookingService {
       this.backendIds.set(id, backendBookingId);
     }
 
-    const customerBackendId = item.khachHangId || item.customerId;
+    const customerBackendId = normalized.khachHangId;
     const uiCustomerId = customerBackendId
       ? (this.customerService.getAllCustomers().find(c => c.backendId === customerBackendId)?.id || 0)
       : 0;
@@ -350,30 +415,30 @@ export class MockBookingService {
     const startTimeStr = startTime.slice(11, 16);
     const endTimeStr = endTime.slice(11, 16);
     const calc = this.pricingService.calculatePrice(courtType, startTimeStr, endTimeStr, false);
-    const courtAmount = item.tongTienSan ?? item.courtAmount ?? 0;
-    const serviceAmount = item.tongTienDichVu ?? item.serviceAmount ?? 0;
-    const overtimeAmount = item.phuThuLoGio ?? item.overtimeAmount ?? 0;
-    const depositAmount = item.tienDaCoc ?? item.depositAmount ?? 0;
-    const finalAmount = item.tongThanhToan ?? item.finalAmount ?? 0;
-    const serviceItems = item.chiTietDichVus || item.serviceItems || [];
+    const courtAmount = normalized.tongTienSan ?? 0;
+    const serviceAmount = normalized.tongTienDichVu ?? 0;
+    const overtimeAmount = normalized.phuThuLoGio ?? 0;
+    const depositAmount = normalized.tienDaCoc ?? 0;
+    const finalAmount = normalized.tongThanhToan ?? 0;
+    const serviceItems = normalized.chiTietDichVus || [];
 
     return {
       id,
       code: bookingCode,
       courtId: uiCourtId,
-      courtName: item.kyHieuSoSan || item.courtCode || this.courtApi.getCourtName(uiCourtId),
+      courtName: normalized.kyHieuSoSan || this.courtApi.getCourtName(uiCourtId),
       customerId: uiCustomerId,
-      customerName: item.tenKhachHang || item.customerName || bookingCode,
-      customerPhone: item.soDienThoaiKhachHang || item.customerPhone || '',
+      customerName: normalized.tenKhachHang || bookingCode,
+      customerPhone: normalized.soDienThoaiKhachHang || '',
       date: startTime.slice(0, 10),
       startTime: startTimeStr,
       endTime: endTimeStr,
-      status: this.toUiStatus(item.trangThai || item.status || 'DA_COC'),
+      status: this.toUiStatus(normalized.trangThai || 'DA_COC'),
       deposit: depositAmount,
       totalAmount: courtAmount > 0 ? courtAmount : calc.totalAmount,
       overtimeAmount,
       checkoutAmount: finalAmount,
-      checkoutTime: (item.gioKetThucThucTe || item.actualEndTime || '').slice(11, 16) || undefined,
+      checkoutTime: (normalized.gioKetThucThucTe || '').slice(11, 16) || undefined,
       paymentMethod: PaymentMethod.Cash,
       note: '',
       staffName: this.getStaffNameForBooking(backendBookingId),

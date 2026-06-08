@@ -2,14 +2,13 @@
   <div class="page-header">
     <div>
       <h2 class="page-title">🥤 Quản lý dịch vụ phụ trợ</h2>
-      <p class="page-subtitle">Thêm, sửa, xóa các sản phẩm nước uống, bóng cầu lông, phụ kiện thuê tại sân</p>
+      <p class="page-subtitle">Thêm, sửa, xóa các sản phẩm nước uống, bóng cầu lông và phụ kiện thuê tại sân</p>
     </div>
     @if (isAdmin()) {
       <button class="btn btn-primary" (click)="openAddModal()">➕ Thêm dịch vụ</button>
     }
   </div>
 
-  <!-- Search & Filter Controls -->
   <div class="search-filter-row">
     <div class="search-box-wrapper">
       <span class="search-icon">🔍</span>
@@ -18,7 +17,6 @@
   </div>
 
   <div class="services-layout">
-    <!-- Services List Table -->
     <div class="table-card">
       <table class="data-table">
         <thead>
@@ -58,7 +56,6 @@
       </table>
     </div>
 
-    <!-- Add/Edit Service Modal overlay -->
     @if (showModal()) {
       <div class="modal-overlay" (click)="showModal.set(false)">
         <div class="modal-card" (click)="$event.stopPropagation()">
@@ -87,6 +84,7 @@
         </div>
       </div>
     }
+
     <app-confirm-dialog
       [visible]="showConfirmDialog()"
       [title]="confirmDialogTitle()"

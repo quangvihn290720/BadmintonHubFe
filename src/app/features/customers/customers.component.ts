@@ -1,7 +1,7 @@
 import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
 import { StatusBadgeComponent } from '../../shared/components/status-badge/status-badge.component';
-import { MockCustomerService } from '../../core/services/mock-customer.service';
-import { MockBookingService } from '../../core/services/mock-booking.service';
+import { CustomerService } from '../../core/services/customer.service';
+import { BookingService } from '../../core/services/booking.service';
 import { PricingService } from '../../core/services/pricing.service';
 import { Customer, Booking, getVipTier } from '../../core/models';
 
@@ -13,8 +13,8 @@ import { Customer, Booking, getVipTier } from '../../core/models';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CustomersComponent {
-  private readonly customerService = inject(MockCustomerService);
-  private readonly bookingService = inject(MockBookingService);
+  private readonly customerService = inject(CustomerService);
+  private readonly bookingService = inject(BookingService);
   private readonly pricingService = inject(PricingService);
 
   readonly allCustomers = this.customerService.customers;

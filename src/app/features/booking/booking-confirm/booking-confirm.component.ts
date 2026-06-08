@@ -2,7 +2,7 @@ import { Component, OnInit, ChangeDetectionStrategy, inject, signal, computed } 
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { BookingStateService } from '../../../core/services/booking-state.service';
-import { MockBookingService } from '../../../core/services/mock-booking.service';
+import { BookingService } from '../../../core/services/booking.service';
 import { PricingService } from '../../../core/services/pricing.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { PaymentMethod } from '../../../core/models';
@@ -18,7 +18,7 @@ export class BookingConfirmComponent implements OnInit {
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly router = inject(Router);
   private readonly bookingStateService = inject(BookingStateService);
-  private readonly bookingService = inject(MockBookingService);
+  private readonly bookingService = inject(BookingService);
   private readonly pricingService = inject(PricingService);
   private readonly authService = inject(AuthService);
 

@@ -6,6 +6,7 @@ import { ApiResponse } from '../models/api-response.model';
 import { BackendServiceItem } from '../models/backend-api.model';
 import { ApiConfigService } from './api-config.service';
 import { ServiceItemApiService } from './service-item-api.service';
+import { normalizeServiceItemTypeForApi } from '../utils/backend-contract.utils';
 
 export interface ServiceItem {
   id: number;
@@ -67,7 +68,7 @@ export class AdditionalServiceService {
     const headers = new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID() });
     (this.http.post(API_ENDPOINTS.ADMIN.SERVICE_ITEMS, {
       name,
-      type: 'DRINK',
+      type: normalizeServiceItemTypeForApi('NUOC'),
       price,
       stockQuantity: 0,
       status: 'ACTIVE'
@@ -93,7 +94,7 @@ export class AdditionalServiceService {
     if (!existing?.key) return;
     (this.http.put(API_ENDPOINTS.ADMIN.SERVICE_ITEMS + `/${existing.key}`, {
       name,
-      type: existing.type || 'DRINK',
+      type: normalizeServiceItemTypeForApi(existing.type),
       price,
       stockQuantity: existing.stockQuantity || 0,
       status: existing.status || 'ACTIVE'

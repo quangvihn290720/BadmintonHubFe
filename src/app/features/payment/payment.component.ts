@@ -1,7 +1,7 @@
 import { Component, ChangeDetectionStrategy, inject, computed, signal } from '@angular/core';
 import { StatusBadgeComponent } from '../../shared/components/status-badge/status-badge.component';
-import { MockBookingService } from '../../core/services/mock-booking.service';
-import { MockCustomerService } from '../../core/services/mock-customer.service';
+import { BookingService } from '../../core/services/booking.service';
+import { CustomerService } from '../../core/services/customer.service';
 import { BookingStatus, Booking, PaymentMethod } from '../../core/models';
 
 @Component({
@@ -12,8 +12,8 @@ import { BookingStatus, Booking, PaymentMethod } from '../../core/models';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PaymentComponent {
-  private readonly bookingService = inject(MockBookingService);
-  private readonly customerService = inject(MockCustomerService);
+  private readonly bookingService = inject(BookingService);
+  private readonly customerService = inject(CustomerService);
 
   readonly payments = computed(() => {
     const bookings = this.bookingService.bookings().filter(b => b.status !== BookingStatus.Cancelled);
@@ -156,9 +156,13 @@ export class PaymentComponent {
       checkoutAmt,
       pm,
       timeStr
-    );
-    this.customerService.addCompletedBooking(booking.customerPhone, booking.customerName, grandTotal);
-    this.showDetailModal.set(false);
+    ).subscribe({
+      next: () => {
+        this.customerService.addCompletedBooking(booking.customerPhone, booking.customerName, grandTotal);
+        this.showDetailModal.set(false);
+      },
+      error: () => {}
+    });
   }
 
   getStatusLabel(status: string): string {
