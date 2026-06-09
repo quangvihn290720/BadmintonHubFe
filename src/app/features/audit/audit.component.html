@@ -2,37 +2,104 @@
   <div class="page-header">
     <div>
       <h2 class="page-title">📋 Nhật ký hoạt động</h2>
-      <p class="page-subtitle">Lịch sử thao tác admin và vòng đời lịch đặt</p>
+      <p class="page-subtitle">Lịch sử thao tác admin và vòng đời lịch đặt sân</p>
     </div>
-    <button class="btn btn-secondary" (click)="reload()">Tải lại</button>
+    <button class="btn btn-secondary" (click)="reload()" [disabled]="loading()">
+      {{ loading() ? '⏳ Đang tải...' : '🔄 Tải lại' }}
+    </button>
   </div>
 
   @if (error()) {
     <div class="error-banner">{{ error() }}</div>
   }
 
-  <div class="table-card">
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>Thời gian</th>
-          <th>Hành động</th>
-          <th>Đối tượng</th>
-          <th>Chi tiết</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (log of logs(); track log.id) {
+  <div class="stats-row">
+    <div class="stat-card">
+      <span class="stat-icon">📊</span>
+      <div>
+        <div class="stat-value">{{ filteredLogs().length }}</div>
+        <div class="stat-label">Bản ghi hiển thị</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <span class="stat-icon">🕐</span>
+      <div>
+        <div class="stat-value">{{ latestLogTime() || '—' }}</div>
+        <div class="stat-label">Hoạt động gần nhất</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="search-filter-row">
+    <div class="search-box-wrapper">
+      <span class="search-icon">🔍</span>
+      <input type="text" class="search-input" placeholder="Tìm theo hành động, đối tượng, chi tiết..."
+        [value]="searchQuery()" (input)="onSearch($event)">
+    </div>
+    <div class="filter-controls-group">
+      <div class="select-group">
+        <label class="control-label">Loại đối tượng:</label>
+        <select class="select-dropdown" [value]="entityFilter()" (change)="onEntityFilterChange($event)">
+          <option value="all">Tất cả</option>
+          @for (type of entityTypes(); track type) {
+            <option [value]="type">{{ type }}</option>
+          }
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="audit-layout">
+    <div class="table-card" [class.is-loading]="loading()">
+      @if (loading()) {
+        <div class="loading-overlay">
+          <span class="loading-spinner"></span>
+          <span>Đang tải nhật ký...</span>
+        </div>
+      }
+      <table class="data-table">
+        <thead>
           <tr>
-            <td>{{ formatDate(log.createdAt) }}</td>
-            <td><strong>{{ log.action }}</strong></td>
-            <td>{{ log.entityType }} / {{ log.entityId }}</td>
-            <td class="audit-value">{{ log.newValue }}</td>
+            <th>Thời gian</th>
+            <th>Hành động</th>
+            <th>Đối tượng</th>
+            <th>Chi tiết</th>
           </tr>
-        } @empty {
-          <tr><td colspan="4" class="empty-text">{{ loading() ? 'Đang tải...' : 'Không có bản ghi.' }}</td></tr>
-        }
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          @for (log of filteredLogs(); track log.id) {
+            <tr>
+              <td class="time-cell">{{ formatDate(log.createdAt) }}</td>
+              <td>
+                <span class="action-badge" [class]="actionBadgeClass(log.action)">
+                  {{ formatAction(log.action) }}
+                </span>
+              </td>
+              <td>
+                <div class="entity-cell">
+                  <span class="entity-type">{{ log.entityType }}</span>
+                  <code class="entity-id">{{ shortId(log.entityId) }}</code>
+                </div>
+              </td>
+              <td>
+                <div class="audit-detail" [title]="log.newValue">{{ log.newValue || '—' }}</div>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="4" class="empty-text">
+                @if (loading()) {
+                  <span class="empty-icon">⏳</span>
+                  Đang tải dữ liệu...
+                } @else {
+                  <span class="empty-icon">📭</span>
+                  Không có bản ghi audit nào phù hợp.
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>

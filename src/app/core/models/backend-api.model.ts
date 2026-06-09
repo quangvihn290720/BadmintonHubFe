@@ -93,7 +93,7 @@ export interface LichDatScheduleApi {
 
 export interface CreateLichDatRequest {
   khachhangId?: Uuid | null;
-  nhanvienId: Uuid;
+  nhanvienId?: Uuid;
   loaisanId: Uuid;
   startTime: string;
   endTime: string;
@@ -141,6 +141,7 @@ export interface KhachHangApi {
   status?: string;
   totalLichDats?: number;
   createdAt?: string;
+  blacklistReason?: string | null;
 }
 
 export interface NhanVienApi {
