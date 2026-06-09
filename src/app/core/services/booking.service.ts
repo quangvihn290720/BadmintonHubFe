@@ -13,6 +13,7 @@ import {
 } from '../models/backend-api.model';
 import { AuthService } from './auth.service';
 import { CourtApiService } from './court-api.service';
+import { ApiConfigService } from './api-config.service';
 import { CustomerService } from './customer.service';
 import { PricingService } from './pricing.service';
 import { normalizeScheduleBooking } from '../utils/backend-contract.utils';
@@ -47,6 +48,7 @@ export class BookingService {
   private readonly courtApi = inject(CourtApiService);
   private readonly customerService = inject(CustomerService);
   private readonly pricingService = inject(PricingService);
+  private readonly apiConfig = inject(ApiConfigService);
 
   private readonly bookingsSignal = signal<Booking[]>([]);
   readonly bookings = this.bookingsSignal.asReadonly();
@@ -331,20 +333,67 @@ export class BookingService {
     return { available: totalCourts - occupiedCourts, deposited, playing, revenue };
   }
 
-  cancelBooking(bookingId: number): void {
-    this.updateStatus(bookingId, BookingStatus.Cancelled);
+  cancelBooking(
+    bookingId: number,
+    reason = 'Customer requested cancellation',
+    refundAmount = 0,
+    refundPaymentMethod: PaymentMethod = PaymentMethod.Cash
+  ): Observable<unknown> {
     const booking = this.bookingsSignal().find(b => b.id === bookingId);
     const backendId = this.backendIds.get(bookingId);
-    if (backendId) {
-      (this.http.post(API_ENDPOINTS.BOOKINGS.CANCEL(backendId), {
-        reason: 'Customer requested cancellation',
-        refundAmount: 0,
-        refundPaymentMethod: 'TIEN_MAT',
-        transactionCode: `RF-${Date.now()}`
-      }, { headers: new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID() }) }) as Observable<ApiResponse<unknown>>)
-        .pipe(catchError(() => of(null)))
-        .subscribe(() => booking && this.fetchBookings(booking.date));
+    if (!backendId) {
+      this.updateStatus(bookingId, BookingStatus.Cancelled);
+      return of(null);
     }
+
+    return (this.http.post(API_ENDPOINTS.BOOKINGS.CANCEL(backendId), {
+      reason,
+      refundAmount,
+      refundPhuongThuc: this.toBackendPaymentMethod(refundPaymentMethod),
+      refundPaymentMethod: this.toBackendPaymentMethod(refundPaymentMethod),
+      transactionCode: `RF-${Date.now()}`
+    }, { headers: new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID() }) }) as Observable<ApiResponse<unknown>>).pipe(
+      tap(() => {
+        this.updateStatus(bookingId, BookingStatus.Cancelled);
+        if (booking) {
+          this.fetchBookings(booking.date);
+        }
+      }),
+      map(response => response.data),
+      catchError(err => throwError(() => err))
+    );
+  }
+
+  rescheduleBooking(
+    bookingId: number,
+    courtId: number,
+    courtName: string,
+    date: string,
+    startTime: string,
+    endTime: string
+  ): Observable<unknown> {
+    const backendId = this.backendIds.get(bookingId);
+    const backendCourtId = this.courtApi.getBackendCourtId(courtId);
+    if (!backendId || !backendCourtId) {
+      this.updateBookingSchedule(bookingId, courtId, courtName, date, startTime, endTime);
+      return of(null);
+    }
+
+    return (this.http.put(API_ENDPOINTS.BOOKINGS.SCHEDULE(backendId), {
+      loaisanId: backendCourtId,
+      startTime: `${date}T${startTime}:00`,
+      endTime: `${date}T${endTime}:00`
+    }, { headers: new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID() }) }) as Observable<ApiResponse<unknown>>).pipe(
+      tap(() => {
+        this.updateBookingSchedule(bookingId, courtId, courtName, date, startTime, endTime);
+        this.fetchBookings(date).subscribe();
+      }),
+      map(response => response.data),
+      catchError(err => {
+        this.apiConfig.triggerError(err.error?.message || 'Không thể đổi lịch đặt sân.');
+        return throwError(() => err);
+      })
+    );
   }
 
   checkConflictForEdit(bookingId: number, courtId: number, date: string, startTime: string, endTime: string): ConflictResult {

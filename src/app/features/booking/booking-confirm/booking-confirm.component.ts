@@ -3,6 +3,8 @@ import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angula
 import { Router } from '@angular/router';
 import { BookingStateService } from '../../../core/services/booking-state.service';
 import { BookingService } from '../../../core/services/booking.service';
+import { PaymentIntentApiService } from '../../../core/services/payment-intent-api.service';
+import { switchMap, of } from 'rxjs';
 import { PricingService } from '../../../core/services/pricing.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { PaymentMethod } from '../../../core/models';
@@ -21,6 +23,7 @@ export class BookingConfirmComponent implements OnInit {
   private readonly bookingService = inject(BookingService);
   private readonly pricingService = inject(PricingService);
   private readonly authService = inject(AuthService);
+  private readonly paymentIntentApi = inject(PaymentIntentApiService);
 
   readonly state = this.bookingStateService.state;
   readonly staffName = signal<string>('');
@@ -32,6 +35,10 @@ export class BookingConfirmComponent implements OnInit {
 
   readonly isSubmitting = signal<boolean>(false);
   readonly depositError = signal<string>('');
+  readonly showQrModal = signal(false);
+  readonly qrPayload = signal('');
+  readonly pendingIntentId = signal('');
+  readonly pendingWebhookSecret = signal('');
 
   readonly priceCalc = computed(() => {
     const s = this.state();
@@ -121,15 +128,57 @@ export class BookingConfirmComponent implements OnInit {
       note: s.note || '',
       staffName: this.staffName(),
       isBlacklistOverride: s.isBlacklistOverride || false
-    }).subscribe(booking => {
-      this.bookingStateService.setPartial({
-        deposit,
-        totalAmount: calc.totalAmount,
-        paymentMethod: finalMethod
-      });
-      this.bookingStateService.setLastCreatedBookingCode(booking.code);
-      this.isSubmitting.set(false);
-      this.router.navigate(['/booking/result']);
+    }).pipe(
+      switchMap(booking => {
+        const backendId = this.bookingService.getBackendBookingId(booking.id);
+        const needsQr = finalMethod === PaymentMethod.MomoQR || finalMethod === PaymentMethod.BankTransfer;
+        if (backendId && needsQr) {
+          return this.paymentIntentApi.createIntent(backendId, deposit).pipe(
+            switchMap(intent => of({ booking, intent }))
+          );
+        }
+        return of({ booking, intent: null });
+      })
+    ).subscribe({
+      next: ({ booking, intent }) => {
+        this.bookingStateService.setPartial({
+          deposit,
+          totalAmount: calc.totalAmount,
+          paymentMethod: finalMethod
+        });
+        this.bookingStateService.setLastCreatedBookingCode(booking.code);
+        this.isSubmitting.set(false);
+        if (intent) {
+          this.qrPayload.set(intent.qrPayload);
+          this.pendingIntentId.set(intent.id);
+          this.pendingWebhookSecret.set(intent.webhookSecret);
+          this.showQrModal.set(true);
+          return;
+        }
+        this.router.navigate(['/booking/result']);
+      },
+      error: () => this.isSubmitting.set(false)
     });
+  }
+
+  simulateQrPayment(): void {
+    const intentId = this.pendingIntentId();
+    const secret = this.pendingWebhookSecret();
+    if (!intentId || !secret) {
+      this.router.navigate(['/booking/result']);
+      return;
+    }
+    this.paymentIntentApi.confirmMockWebhook(intentId, secret).subscribe({
+      next: () => {
+        this.showQrModal.set(false);
+        this.router.navigate(['/booking/result']);
+      },
+      error: () => this.router.navigate(['/booking/result'])
+    });
+  }
+
+  skipQrPayment(): void {
+    this.showQrModal.set(false);
+    this.router.navigate(['/booking/result']);
   }
 }

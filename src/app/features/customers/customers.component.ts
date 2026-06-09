@@ -56,6 +56,7 @@ export class CustomersComponent {
 
   readonly selectedCustomer = signal<Customer | null>(null);
   readonly showDetailsModal = signal<boolean>(false);
+  readonly actionMessage = signal<string>('');
 
   readonly customerBookings = computed<Booking[]>(() => {
     const cust = this.selectedCustomer();
@@ -74,7 +75,32 @@ export class CustomersComponent {
 
   openDetailsModal(customer: Customer): void {
     this.selectedCustomer.set(customer);
+    this.actionMessage.set('');
     this.showDetailsModal.set(true);
+  }
+
+  blacklistSelected(): void {
+    const cust = this.selectedCustomer();
+    if (!cust?.backendId) return;
+    this.customerService.blacklistCustomer(cust.backendId).subscribe({
+      next: () => {
+        this.actionMessage.set('Đã đưa khách vào blacklist.');
+        this.showDetailsModal.set(false);
+      },
+      error: () => this.actionMessage.set('Không thể blacklist khách hàng.')
+    });
+  }
+
+  activateSelected(): void {
+    const cust = this.selectedCustomer();
+    if (!cust?.backendId) return;
+    this.customerService.activateCustomer(cust.backendId).subscribe({
+      next: () => {
+        this.actionMessage.set('Đã kích hoạt lại khách hàng.');
+        this.showDetailsModal.set(false);
+      },
+      error: () => this.actionMessage.set('Không thể kích hoạt khách hàng.')
+    });
   }
 
   getVipTier(points?: number): string {

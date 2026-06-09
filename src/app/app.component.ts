@@ -13,8 +13,18 @@ import { ApiConfigService } from './core/services/api-config.service';
       <div class="toast-error-banner" (click)="clearError()">
         <div class="toast-icon">⚠️</div>
         <div class="toast-content">
-          <div class="toast-title">Lỗi Kết nối Backend (Online Mode)</div>
+          <div class="toast-title">Lỗi hệ thống</div>
           <div class="toast-desc">{{ errorMsg() }}</div>
+        </div>
+        <button class="toast-close">✕</button>
+      </div>
+    }
+    @if (successMsg()) {
+      <div class="toast-success-banner" (click)="clearSuccess()">
+        <div class="toast-icon">✅</div>
+        <div class="toast-content">
+          <div class="toast-title">Thành công</div>
+          <div class="toast-desc">{{ successMsg() }}</div>
         </div>
         <button class="toast-close">✕</button>
       </div>
@@ -79,13 +89,34 @@ import { ApiConfigService } from './core/services/api-config.service';
     .toast-close:hover {
       opacity: 1;
     }
+    .toast-success-banner {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      z-index: 9999;
+      background: #16a34a;
+      color: white;
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 10px 15px -3px rgba(22, 163, 74, 0.4);
+      cursor: pointer;
+      max-width: 380px;
+    }
   `]
 })
 export class AppComponent {
   private readonly apiConfig = inject(ApiConfigService);
   readonly errorMsg = this.apiConfig.httpError;
+  readonly successMsg = this.apiConfig.httpSuccess;
 
   clearError(): void {
     this.apiConfig.httpError.set(null);
+  }
+
+  clearSuccess(): void {
+    this.apiConfig.httpSuccess.set(null);
   }
 }

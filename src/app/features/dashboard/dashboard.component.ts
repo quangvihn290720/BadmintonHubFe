@@ -8,6 +8,8 @@ import { CustomerService } from '../../core/services/customer.service';
 import { AdditionalServiceService, ServiceItem } from '../../core/services/additional-service.service';
 import { BookingStatus, Court, Booking, PaymentMethod, TimeSlot } from '../../core/models';
 import { CourtApiService } from '../../core/services/court-api.service';
+import { PromotionApiService } from '../../core/services/promotion-api.service';
+import { ApiConfigService } from '../../core/services/api-config.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -24,6 +26,8 @@ export class DashboardComponent implements OnInit {
   private readonly additionalService = inject(AdditionalServiceService);
   private readonly courtApi = inject(CourtApiService);
   private readonly router = inject(Router);
+  private readonly promotionApi = inject(PromotionApiService);
+  private readonly apiConfig = inject(ApiConfigService);
 
   readonly courts = this.courtApi.courts;
   readonly hourLabels = ['06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00'];
@@ -104,6 +108,9 @@ export class DashboardComponent implements OnInit {
   readonly rescheduleHours = ['06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00'];
 
   readonly checkoutPaymentMethod = signal<PaymentMethod>(PaymentMethod.Cash);
+  readonly promotionCode = signal<string>('');
+  readonly appliedDiscount = signal<number>(0);
+  readonly cancelRefundAmount = signal<number>(0);
 
   // Computed Overtime & Fee rounded by 15-minute components:
   // <= 15: 0 mins.
@@ -165,7 +172,7 @@ export class DashboardComponent implements OnInit {
   readonly balanceDue = computed(() => {
     const booking = this.activeBooking();
     if (!booking) return 0;
-    return Math.max(0, this.totalBill() - booking.deposit);
+    return Math.max(0, this.totalBill() - booking.deposit - this.appliedDiscount());
   });
 
   ngOnInit(): void {
@@ -310,8 +317,31 @@ export class DashboardComponent implements OnInit {
   // Check-Out Billing Calculations
   resetCheckoutModalData(): void {
     this.checkoutPaymentMethod.set(PaymentMethod.Cash);
+    this.promotionCode.set('');
+    this.appliedDiscount.set(0);
     const dbServices = this.additionalService.getServices();
     this.serviceItems.set(dbServices.map(s => ({ ...s, quantity: 0 })));
+  }
+
+  applyPromotionCode(): void {
+    const booking = this.activeBooking();
+    const code = this.promotionCode().trim();
+    if (!booking || !code) return;
+
+    const backendId = this.bookingService.getBackendBookingId(booking.id);
+    if (!backendId) {
+      this.showToast('Không tìm thấy mã booking trên backend.', 'error');
+      return;
+    }
+
+    this.promotionApi.applyPromotion(backendId, code).subscribe({
+      next: (result: unknown) => {
+        const discount = Number((result as { discountAmount?: number })?.discountAmount ?? 0);
+        this.appliedDiscount.set(discount);
+        this.showToast(`Áp dụng mã ${code} thành công!`, 'success');
+      },
+      error: (err) => this.showToast(err.error?.message || 'Mã khuyến mãi không hợp lệ.', 'error')
+    });
   }
 
   adjustServiceQty(itemKey: string, delta: number): void {
@@ -434,6 +464,8 @@ export class DashboardComponent implements OnInit {
   }
 
   confirmCancelBooking(bookingId: number): void {
+    const booking = this.bookingService.bookings().find(b => b.id === bookingId) || this.activeBooking();
+    this.cancelRefundAmount.set(booking?.deposit ?? 0);
     this.showCheckInModal.set(false);
     this.showDetailModal.set(false);
     this.showCancelConfirmModal.set(true);
@@ -442,9 +474,18 @@ export class DashboardComponent implements OnInit {
   executeCancelBooking(): void {
     const booking = this.activeBooking();
     if (booking) {
-      this.bookingService.cancelBooking(booking.id);
-      this.showCancelConfirmModal.set(false);
-      this.showToast('Đã hủy lịch đặt sân thành công!', 'success');
+      this.bookingService.cancelBooking(
+        booking.id,
+        'Cancelled by staff',
+        this.cancelRefundAmount(),
+        PaymentMethod.Cash
+      ).subscribe({
+        next: () => {
+          this.showCancelConfirmModal.set(false);
+          this.showToast('Đã hủy lịch đặt sân thành công!', 'success');
+        },
+        error: () => this.showToast('Không thể hủy lịch đặt sân.', 'error')
+      });
     }
   }
 
@@ -534,10 +575,13 @@ export class DashboardComponent implements OnInit {
       return;
     }
 
-    // Update schedule
-    this.bookingService.updateBookingSchedule(booking.id, courtId, courtName, date, start, end);
-    this.showToast('Thay đổi lịch đặt sân thành công!', 'success');
-    this.showRescheduleModal.set(false);
+    this.bookingService.rescheduleBooking(booking.id, courtId, courtName, date, start, end).subscribe({
+      next: () => {
+        this.showToast('Thay đổi lịch đặt sân thành công!', 'success');
+        this.showRescheduleModal.set(false);
+      },
+      error: () => this.showToast('Không thể đổi lịch đặt sân.', 'error')
+    });
   }
 
   private addMinutes(time: string, mins: number): string {

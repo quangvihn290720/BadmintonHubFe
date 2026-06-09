@@ -156,7 +156,9 @@ export class SidebarComponent {
           { label: 'Quản lý sân', route: '/courts', icon: '🏟️' },
           { label: 'Cấu hình bảng giá', route: '/pricing', icon: '💰' },
           { label: 'Quản lý dịch vụ', route: '/services', icon: '🥤' },
+          { label: 'Khuyến mãi', route: '/promotions', icon: '🎁' },
           { label: 'Báo cáo & Thống kê', route: '/reports', icon: '📈' },
+          { label: 'Nhật ký audit', route: '/audit', icon: '📋' },
           { label: 'Tài khoản nhân viên', route: '/staff', icon: '🔑' }
         ]
       });

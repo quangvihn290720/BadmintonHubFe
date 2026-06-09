@@ -140,6 +140,25 @@ export class CustomerService {
     return newCustomer;
   }
 
+  blacklistCustomer(backendId: string, reason = 'Blacklisted by staff'): Observable<Customer | null> {
+    return (this.http.patch(API_ENDPOINTS.CUSTOMERS.BLACKLIST(backendId), {}) as Observable<ApiResponse<BackendCustomer>>).pipe(
+      tap(() => this.fetchCustomers()),
+      map(response => {
+        const existing = this.customersSignal().find(c => c.backendId === backendId);
+        return existing ? { ...existing, isBlacklisted: true, blacklistReason: reason } : null;
+      }),
+      catchError(() => of(null))
+    );
+  }
+
+  activateCustomer(backendId: string): Observable<Customer | null> {
+    return (this.http.patch(API_ENDPOINTS.CUSTOMERS.ACTIVATE(backendId), {}) as Observable<ApiResponse<BackendCustomer>>).pipe(
+      tap(() => this.fetchCustomers()),
+      map(() => this.customersSignal().find(c => c.backendId === backendId) || null),
+      catchError(() => of(null))
+    );
+  }
+
   addCompletedBooking(phone: string, name: string, totalPaid: number): void {
     let customer = this.findByPhone(phone);
     if (!customer) {

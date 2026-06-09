@@ -42,7 +42,22 @@ const LICHDATS = {
   DICH_VUS: (id: string) => `/lichdats/${id}/service-items`,
   CHECKOUT: (id: string) => `/lichdats/${id}/check-out`,
   CANCEL: (id: string) => `/lichdats/${id}/cancel`,
+  SCHEDULE: (id: string) => `/lichdats/${id}/schedule`,
   SCHEDULES: '/schedules'
+} as const;
+
+const THANH_TOANS = {
+  BASE: '/thanhtoans'
+} as const;
+
+const PAYMENTS = {
+  INTENTS: '/payments/intents',
+  INTENT: (id: string) => `/payments/intents/${id}`,
+  MOCK_WEBHOOK: '/webhooks/payments/mock'
+} as const;
+
+const AUDIT = {
+  LOGS: '/admin/audit-logs'
 } as const;
 
 const REPORTS = {
@@ -84,6 +99,9 @@ export const API_ENDPOINTS = {
     EMPLOYEE_ROLE: ADMIN.NHAN_VIEN_ROLE
   },
   LICHDATS,
+  THANH_TOANS,
+  PAYMENTS,
+  AUDIT,
   REPORTS,
   KHACH_HANGS,
   KHUNG_GIO,

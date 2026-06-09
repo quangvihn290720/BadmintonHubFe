@@ -1,0 +1,38 @@
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h2 class="page-title">📋 Nhật ký hoạt động</h2>
+      <p class="page-subtitle">Lịch sử thao tác admin và vòng đời lịch đặt</p>
+    </div>
+    <button class="btn btn-secondary" (click)="reload()">Tải lại</button>
+  </div>
+
+  @if (error()) {
+    <div class="error-banner">{{ error() }}</div>
+  }
+
+  <div class="table-card">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Thời gian</th>
+          <th>Hành động</th>
+          <th>Đối tượng</th>
+          <th>Chi tiết</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (log of logs(); track log.id) {
+          <tr>
+            <td>{{ formatDate(log.createdAt) }}</td>
+            <td><strong>{{ log.action }}</strong></td>
+            <td>{{ log.entityType }} / {{ log.entityId }}</td>
+            <td class="audit-value">{{ log.newValue }}</td>
+          </tr>
+        } @empty {
+          <tr><td colspan="4" class="empty-text">{{ loading() ? 'Đang tải...' : 'Không có bản ghi.' }}</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

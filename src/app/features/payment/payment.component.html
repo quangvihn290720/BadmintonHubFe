@@ -128,6 +128,18 @@
           <div class="info-row"><span>Ngày đặt sân:</span><strong>{{ booking.date }}</strong></div>
         </div>
 
+        @if (lichdatTransactions().length > 0) {
+        <div class="info-sheet" style="margin-top: 8px;">
+          <h4 style="margin: 0 0 8px 0; font-size: 13px;">Giao dịch từ backend</h4>
+          @for (tx of lichdatTransactions(); track tx.id) {
+            <div class="info-row">
+              <span>{{ tx.type }} / {{ tx.method }}</span>
+              <strong>{{ formatCurrency(tx.amount) }} — {{ tx.status }}</strong>
+            </div>
+          }
+        </div>
+        }
+
         <div class="bill-tally-card" style="background: #1e293b; margin-top: 8px;">
           <h4 class="bill-title" style="color: #cbd5e1; border-bottom: 1px dashed #475569;">🧾 HÓA ĐƠN CHI TIẾT</h4>
           <div class="bill-rows">

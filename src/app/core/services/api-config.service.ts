@@ -18,6 +18,7 @@ export class ApiConfigService {
   readonly backendBase = signal<string>(this.backendBaseUrl);
   readonly token = signal<string | null>(localStorage.getItem(this.TOKEN_KEY));
   readonly httpError = signal<string | null>(null);
+  readonly httpSuccess = signal<string | null>(null);
 
   toggleMockMode(): void {
     this.isMockMode.set(false);
@@ -34,13 +35,23 @@ export class ApiConfigService {
   }
 
   triggerError(message: string): void {
+    this.httpSuccess.set(null);
     this.httpError.set(message);
-    // Auto clear error toast after 4 seconds
     setTimeout(() => {
       if (this.httpError() === message) {
         this.httpError.set(null);
       }
     }, 4000);
+  }
+
+  triggerSuccess(message: string): void {
+    this.httpError.set(null);
+    this.httpSuccess.set(message);
+    setTimeout(() => {
+      if (this.httpSuccess() === message) {
+        this.httpSuccess.set(null);
+      }
+    }, 3000);
   }
 
   getHeaders(): HttpHeaders {

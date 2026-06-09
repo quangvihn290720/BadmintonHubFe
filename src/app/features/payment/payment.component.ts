@@ -1,7 +1,9 @@
-import { Component, ChangeDetectionStrategy, inject, computed, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, computed, signal, OnInit } from '@angular/core';
 import { StatusBadgeComponent } from '../../shared/components/status-badge/status-badge.component';
 import { BookingService } from '../../core/services/booking.service';
 import { CustomerService } from '../../core/services/customer.service';
+import { ThanhToanApiService, ThanhToanSummary } from '../../core/services/thanhtoan-api.service';
+import { ApiConfigService } from '../../core/services/api-config.service';
 import { BookingStatus, Booking, PaymentMethod } from '../../core/models';
 
 @Component({
@@ -11,9 +13,24 @@ import { BookingStatus, Booking, PaymentMethod } from '../../core/models';
   styleUrl: './payment.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class PaymentComponent {
+export class PaymentComponent implements OnInit {
   private readonly bookingService = inject(BookingService);
   private readonly customerService = inject(CustomerService);
+  private readonly thanhtoanApi = inject(ThanhToanApiService);
+  private readonly apiConfig = inject(ApiConfigService);
+
+  readonly thanhtoans = signal<ThanhToanSummary[]>([]);
+  readonly selectedDate = signal(new Date().toISOString().split('T')[0]);
+  readonly lichdatTransactions = signal<ThanhToanSummary[]>([]);
+
+  ngOnInit(): void {
+    this.reloadThanhToans();
+    this.bookingService.fetchBookings(this.selectedDate());
+  }
+
+  reloadThanhToans(): void {
+    this.thanhtoanApi.listByDate(this.selectedDate()).subscribe(items => this.thanhtoans.set(items));
+  }
 
   readonly payments = computed(() => {
     const bookings = this.bookingService.bookings().filter(b => b.status !== BookingStatus.Cancelled);
@@ -126,6 +143,12 @@ export class PaymentComponent {
 
   openDetails(id: number): void {
     this.selectedPaymentId.set(id);
+    const backendId = this.bookingService.getBackendBookingId(id);
+    if (backendId) {
+      this.thanhtoanApi.listByLichDat(backendId).subscribe(items => this.lichdatTransactions.set(items));
+    } else {
+      this.lichdatTransactions.set([]);
+    }
     this.showDetailModal.set(true);
   }
 
@@ -160,8 +183,10 @@ export class PaymentComponent {
       next: () => {
         this.customerService.addCompletedBooking(booking.customerPhone, booking.customerName, grandTotal);
         this.showDetailModal.set(false);
+        this.reloadThanhToans();
+        this.apiConfig.triggerSuccess('Thanh toán thành công.');
       },
-      error: () => {}
+      error: (err) => this.apiConfig.triggerError(err.error?.message || 'Thanh toán thất bại.')
     });
   }
 

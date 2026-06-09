@@ -1,0 +1,91 @@
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h2 class="page-title">🎁 Quản lý khuyến mãi</h2>
+      <p class="page-subtitle">Tạo và quản lý mã giảm giá áp dụng khi checkout</p>
+    </div>
+    <button class="btn btn-primary" (click)="openAddModal()">Thêm khuyến mãi</button>
+  </div>
+
+  @if (error()) {
+    <div class="error-banner">{{ error() }}</div>
+  }
+
+  <div class="search-filter-row">
+    <input type="text" class="search-input" placeholder="Tìm theo mã..." [value]="searchQuery()" (input)="onSearch($event)">
+  </div>
+
+  <div class="table-card">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Mã</th>
+          <th>Loại giảm</th>
+          <th>Giá trị</th>
+          <th>Còn lại</th>
+          <th>Hết hạn</th>
+          <th>Trạng thái</th>
+          <th>Thao tác</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (item of filteredPromotions(); track item.id) {
+          <tr>
+            <td><strong>{{ codeOf(item) }}</strong></td>
+            <td>{{ item.loaiGiamGia || 'FIXED_AMOUNT' }}</td>
+            <td>{{ discountOf(item) }}</td>
+            <td>{{ item.soLuongConLai ?? item.remainingQuantity ?? 0 }}</td>
+            <td>{{ (item.hanSuDung || item.expiredAt || '').slice(0, 10) }}</td>
+            <td>{{ item.trangThai || item.status }}</td>
+            <td>
+              <button class="btn btn-secondary btn-sm" (click)="openEditModal(item)">Sửa</button>
+              <button class="btn btn-secondary btn-sm" (click)="toggleStatus(item)">Đổi TT</button>
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="7" class="empty-text">Chưa có khuyến mãi nào.</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+@if (showModal()) {
+  <div class="modal-overlay" (click)="showModal.set(false)">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>{{ isEdit() ? 'Sửa khuyến mãi' : 'Thêm khuyến mãi' }}</h3>
+        <button class="close-btn" (click)="showModal.set(false)">✕</button>
+      </div>
+      <form class="modal-body" [formGroup]="promotionForm" (ngSubmit)="onSubmit()">
+        <label>Mã khuyến mãi<input formControlName="code" class="form-input"></label>
+        <label>Loại giảm
+          <select formControlName="loaiGiamGia" class="form-input">
+            <option value="FIXED_AMOUNT">Số tiền cố định</option>
+            <option value="PERCENT">Phần trăm</option>
+          </select>
+        </label>
+        <label>Giá trị giảm<input type="number" formControlName="discountValue" class="form-input"></label>
+        <label>Số lượng còn lại<input type="number" formControlName="remainingQuantity" class="form-input"></label>
+        <label>Hết hạn<input type="datetime-local" formControlName="expiredAt" class="form-input"></label>
+        <label>Trạng thái
+          <select formControlName="status" class="form-input">
+            <option value="ACTIVE">ACTIVE</option>
+            <option value="INACTIVE">INACTIVE</option>
+          </select>
+        </label>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="showModal.set(false)">Hủy</button>
+          <button type="submit" class="btn btn-primary">Lưu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+<app-confirm-dialog
+  [visible]="showConfirmDialog()"
+  [title]="confirmDialogTitle()"
+  [message]="confirmDialogMessage()"
+  [actions]="confirmDialogActions()"
+  (closed)="showConfirmDialog.set(false)" />

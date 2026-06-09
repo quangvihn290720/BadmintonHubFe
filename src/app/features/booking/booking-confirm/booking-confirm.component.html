@@ -135,3 +135,21 @@
     </div>
   </div>
 </div>
+
+@if (showQrModal()) {
+  <div class="modal-overlay" style="z-index: 2000;">
+    <div class="modal-card" style="max-width: 420px;">
+      <div class="modal-header">
+        <h3>Quét mã QR thanh toán (sandbox)</h3>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 13px; color: var(--text-secondary);">Demo mock QR — bấm mô phỏng thanh toán để xác nhận cọc.</p>
+        <pre style="white-space: pre-wrap; word-break: break-all; background: #0f172a; color: #e2e8f0; padding: 12px; border-radius: 8px; font-size: 11px;">{{ qrPayload() }}</pre>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="skipQrPayment()">Bỏ qua</button>
+        <button class="btn btn-primary" (click)="simulateQrPayment()">Mô phỏng đã thanh toán</button>
+      </div>
+    </div>
+  </div>
+}
