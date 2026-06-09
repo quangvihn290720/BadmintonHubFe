@@ -17,6 +17,7 @@ export class PromotionsComponent {
 
   readonly promotions = this.promotionApi.adminPromotions;
   readonly searchQuery = signal('');
+  readonly statusFilter = signal<'all' | 'ACTIVE' | 'INACTIVE'>('all');
   readonly showModal = signal(false);
   readonly isEdit = signal(false);
   readonly submitted = signal(false);
@@ -29,9 +30,13 @@ export class PromotionsComponent {
 
   readonly filteredPromotions = computed(() => {
     const q = this.searchQuery().trim().toLowerCase();
-    const list = this.promotions();
-    if (!q) return list;
-    return list.filter(p => this.promotionApi.promotionCode(p).toLowerCase().includes(q));
+    const status = this.statusFilter();
+    return this.promotions().filter(p => {
+      const matchesSearch = !q || this.promotionApi.promotionCode(p).toLowerCase().includes(q);
+      const itemStatus = p.trangThai || p.status || 'ACTIVE';
+      const matchesStatus = status === 'all' || itemStatus === status;
+      return matchesSearch && matchesStatus;
+    });
   });
 
   readonly promotionForm = this.fb.group({
@@ -56,6 +61,15 @@ export class PromotionsComponent {
 
   onSearch(event: Event): void {
     this.searchQuery.set((event.target as HTMLInputElement).value);
+  }
+
+  onStatusFilterChange(event: Event): void {
+    this.statusFilter.set((event.target as HTMLSelectElement).value as 'all' | 'ACTIVE' | 'INACTIVE');
+  }
+
+  showError(field: 'code' | 'discountValue' | 'expiredAt'): boolean {
+    const control = this.promotionForm.controls[field];
+    return this.submitted() && control.invalid;
   }
 
   openAddModal(): void {
@@ -128,5 +142,29 @@ export class PromotionsComponent {
 
   discountOf(item: BackendPromotion): string {
     return this.promotionApi.discountLabel(item);
+  }
+
+  isPercent(item: BackendPromotion): boolean {
+    return (item.loaiGiamGia || '') === 'PERCENT';
+  }
+
+  isActive(item: BackendPromotion): boolean {
+    return (item.trangThai || item.status || 'ACTIVE') === 'ACTIVE';
+  }
+
+  remainingOf(item: BackendPromotion): number {
+    return item.soLuongConLai ?? item.remainingQuantity ?? 0;
+  }
+
+  formatExpiry(item: BackendPromotion): string {
+    const raw = item.hanSuDung || item.expiredAt || '';
+    if (!raw) return '—';
+    return new Date(raw).toLocaleDateString('vi-VN');
+  }
+
+  isExpired(item: BackendPromotion): boolean {
+    const raw = item.hanSuDung || item.expiredAt || '';
+    if (!raw) return false;
+    return new Date(raw).getTime() < Date.now();
   }
 }

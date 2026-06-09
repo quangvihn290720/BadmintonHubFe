@@ -6,6 +6,7 @@ import { DailyRevenueReport } from '../../core/models/backend-api.model';
 import { BookingService } from '../../core/services/booking.service';
 import { AuthService } from '../../core/services/auth.service';
 import { BookingStatus, Booking } from '../../core/models';
+import { addDaysToDateString, todayLocalDate } from '../../core/utils/date.utils';
 
 @Component({
   selector: 'app-reports',
@@ -20,7 +21,7 @@ export class ReportsComponent {
   private readonly bookingService = inject(BookingService);
   private readonly authService = inject(AuthService);
 
-  readonly selectedDate = signal<string>(new Date().toISOString().split('T')[0]);
+  readonly selectedDate = signal<string>(todayLocalDate());
   readonly dailyReport = signal<DailyRevenueReport | null>(null);
   readonly rangeReports = signal<DailyRevenueReport[]>([]);
   readonly loading = signal<boolean>(false);
@@ -210,6 +211,7 @@ export class ReportsComponent {
     this.selectedDate.set(date);
     this.loading.set(true);
     this.error.set(null);
+    this.bookingService.fetchBookings(date);
     const to = new Date(`${date}T00:00:00`);
     const from = new Date(to);
     from.setDate(to.getDate() - 6);
@@ -240,10 +242,7 @@ export class ReportsComponent {
   }
 
   adjustDate(days: number): void {
-    const current = new Date(`${this.selectedDate()}T00:00:00`);
-    current.setDate(current.getDate() + days);
-    const newDateStr = current.toISOString().split('T')[0];
-    this.loadReport(newDateStr);
+    this.loadReport(addDaysToDateString(this.selectedDate(), days));
   }
 
   formatCurrency(amount: number): string {

@@ -5,6 +5,7 @@ import { CustomerService } from '../../core/services/customer.service';
 import { ThanhToanApiService, ThanhToanSummary } from '../../core/services/thanhtoan-api.service';
 import { ApiConfigService } from '../../core/services/api-config.service';
 import { BookingStatus, Booking, PaymentMethod } from '../../core/models';
+import { addDaysToDateString, todayLocalDate } from '../../core/utils/date.utils';
 
 @Component({
   selector: 'app-payment',
@@ -19,36 +20,67 @@ export class PaymentComponent implements OnInit {
   private readonly thanhtoanApi = inject(ThanhToanApiService);
   private readonly apiConfig = inject(ApiConfigService);
 
-  readonly thanhtoans = signal<ThanhToanSummary[]>([]);
-  readonly selectedDate = signal(new Date().toISOString().split('T')[0]);
+  readonly selectedDate = signal(todayLocalDate());
   readonly lichdatTransactions = signal<ThanhToanSummary[]>([]);
+  readonly cashCollectedToday = signal<ThanhToanSummary[]>([]);
 
   ngOnInit(): void {
-    this.reloadThanhToans();
-    this.bookingService.fetchBookings(this.selectedDate());
+    this.reloadForDate(this.selectedDate());
+  }
+
+  reloadForDate(date: string): void {
+    this.selectedDate.set(date);
+    this.bookingService.fetchBookings(date);
+    this.thanhtoanApi.listByDate(date).subscribe(items => this.cashCollectedToday.set(items));
+  }
+
+  onDateChange(event: Event): void {
+    this.reloadForDate((event.target as HTMLInputElement).value);
+    this.currentPage.set(1);
+  }
+
+  adjustDate(days: number): void {
+    this.reloadForDate(addDaysToDateString(this.selectedDate(), days));
+    this.currentPage.set(1);
   }
 
   reloadThanhToans(): void {
-    this.thanhtoanApi.listByDate(this.selectedDate()).subscribe(items => this.thanhtoans.set(items));
+    this.thanhtoanApi.listByDate(this.selectedDate()).subscribe(items => this.cashCollectedToday.set(items));
   }
 
   readonly payments = computed(() => {
-    const bookings = this.bookingService.bookings().filter(b => b.status !== BookingStatus.Cancelled);
+    const date = this.selectedDate();
+    const bookings = this.bookingService.bookings().filter(b => b.date === date && b.status !== BookingStatus.Cancelled);
+    const txnByLichDat = new Map<string, ThanhToanSummary[]>();
+    for (const txn of this.cashCollectedToday()) {
+      const key = txn.lichdatId;
+      if (!key) continue;
+      const list = txnByLichDat.get(key) || [];
+      list.push(txn);
+      txnByLichDat.set(key, list);
+    }
+
     return bookings.map(b => {
+      const backendId = this.bookingService.getBackendBookingId(b.id);
+      const txns = backendId ? (txnByLichDat.get(backendId) || []) : [];
+      const finalTxn = txns.find(t => t.type === 'THANH_TOAN_CUOI_BUOI' && t.status === 'SUCCESS');
       let status: 'paid' | 'pending' | 'partial' = 'pending';
-      if (b.status === BookingStatus.Completed) {
+      if (b.status === BookingStatus.Completed || finalTxn) {
         status = 'paid';
-      } else if (b.deposit > 0) {
+      } else if (b.deposit > 0 || b.status === BookingStatus.Deposited || txns.some(t => t.type === 'DAT_COC')) {
         status = 'partial';
       }
-      
+
       let pmLabel = 'Tiền mặt';
-      if (b.paymentMethod === 'bank_transfer') pmLabel = 'Chuyển khoản';
-      if (b.paymentMethod === 'momo_qr') pmLabel = 'MOMO / QR';
+      const method = finalTxn?.method || b.checkoutPaymentMethod || b.paymentMethod;
+      if (method === 'CHUYEN_KHOAN' || method === 'bank_transfer') pmLabel = 'Chuyển khoản';
+      if (method === 'MOMO' || method === 'momo_qr') pmLabel = 'MOMO / QR';
 
       const srvAmt = b.additionalServices?.reduce((s, i) => s + i.price * i.quantity, 0) || 0;
       const otAmt = b.overtimeAmount || 0;
-      const totalAmount = b.totalAmount + srvAmt + otAmt;
+      const totalAmount = (b.checkoutAmount && b.checkoutAmount > 0)
+        ? b.checkoutAmount + b.deposit
+        : b.totalAmount + srvAmt + otAmt;
 
       return {
         id: b.id,
@@ -56,10 +88,10 @@ export class PaymentComponent implements OnInit {
         customerName: b.customerName,
         courtName: b.courtName,
         date: b.date,
-        totalAmount: totalAmount,
+        totalAmount,
         deposit: b.deposit,
-        remaining: b.status === BookingStatus.Completed ? 0 : totalAmount - b.deposit,
-        status: status,
+        remaining: status === 'paid' ? 0 : Math.max(totalAmount - b.deposit, 0),
+        status,
         paymentMethod: pmLabel
       };
     });
@@ -125,6 +157,13 @@ export class PaymentComponent implements OnInit {
     return this.formatCurrency(total);
   });
 
+  readonly cashCollectedTotal = computed(() => {
+    const total = this.cashCollectedToday().reduce((sum, txn) => {
+      return txn.status === 'SUCCESS' ? sum + txn.amount : sum;
+    }, 0);
+    return this.formatCurrency(total);
+  });
+
   prevPage(): void {
     if (this.currentPage() > 1) {
       this.currentPage.update(p => p - 1);
@@ -183,7 +222,7 @@ export class PaymentComponent implements OnInit {
       next: () => {
         this.customerService.addCompletedBooking(booking.customerPhone, booking.customerName, grandTotal);
         this.showDetailModal.set(false);
-        this.reloadThanhToans();
+        this.reloadForDate(this.selectedDate());
         this.apiConfig.triggerSuccess('Thanh toán thành công.');
       },
       error: (err) => this.apiConfig.triggerError(err.error?.message || 'Thanh toán thất bại.')

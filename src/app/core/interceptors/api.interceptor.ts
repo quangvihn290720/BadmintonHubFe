@@ -2,11 +2,14 @@ import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { catchError, throwError } from 'rxjs';
 import { ApiConfigService } from '../services/api-config.service';
+import { AuthService } from '../services/auth.service';
 import { getFriendlyErrorMessage } from '../constants/error-messages';
 
 export const apiInterceptor: HttpInterceptorFn = (req, next) => {
   const apiConfig = inject(ApiConfigService);
+  const authService = inject(AuthService);
   let apiReq = req;
+  const isLoginRequest = req.url.includes('/auth/login');
 
   if (req.url.startsWith('/')) {
     apiReq = req.clone({
@@ -18,7 +21,7 @@ export const apiInterceptor: HttpInterceptorFn = (req, next) => {
     'X-Request-Id': crypto.randomUUID()
   };
 
-  if (!apiConfig.isMockMode()) {
+  if (!apiConfig.isMockMode() && !isLoginRequest) {
     const token = apiConfig.token();
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
@@ -38,7 +41,7 @@ export const apiInterceptor: HttpInterceptorFn = (req, next) => {
           errorMsg = 'Tên đăng nhập hoặc mật khẩu không chính xác.';
         } else {
           errorMsg = 'Phiên đăng nhập đã hết hạn hoặc không hợp lệ.';
-          apiConfig.setToken(null);
+          authService.logout();
         }
       } else if (err.status === 403) {
         errorMsg = 'Bạn không có quyền thực hiện chức năng này.';

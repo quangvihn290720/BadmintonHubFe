@@ -1,15 +1,15 @@
 <div class="page">
   <div class="page-header">
     <div>
-      <h2 class="page-title">Quản lý sân</h2>
+      <h2 class="page-title">🏟️ Quản lý sân</h2>
       <p class="page-subtitle">Thêm, sửa và đổi trạng thái sân từ API quản trị backend</p>
     </div>
-    <button class="btn btn-primary" (click)="openAddModal()">Thêm sân</button>
+    <button class="btn btn-primary" (click)="openAddModal()">➕ Thêm sân</button>
   </div>
 
   <div class="search-filter-row">
     <div class="search-box-wrapper">
-      <span class="search-icon">Tìm</span>
+      <span class="search-icon">🔍</span>
       <input type="text" class="search-input" placeholder="Tìm theo mã sân, vị trí, trạng thái..." [value]="searchQuery()" (input)="onSearch($event)">
     </div>
   </div>
@@ -127,9 +127,13 @@
             </td>
             <td>
               <div class="action-buttons">
-                <button class="btn-icon btn-edit" (click)="openEditModal(court)">Sửa</button>
-                <button class="btn-icon btn-open" (click)="changeStatus(court, 'SAN_SONG')">Mở</button>
-                <button class="btn-icon btn-maintenance" (click)="changeStatus(court, 'BAO_TRI_LUOI')">Bảo trì</button>
+                <button type="button" class="btn-icon btn-edit" (click)="openEditModal(court)">✏️ Sửa</button>
+                @if (courtStatus(court) !== 'SAN_SONG') {
+                <button type="button" class="btn-icon btn-open" (click)="changeStatus(court, 'SAN_SONG')">▶️ Mở sân</button>
+                }
+                @if (courtStatus(court) !== 'BAO_TRI_LUOI') {
+                <button type="button" class="btn-icon btn-maintenance" (click)="changeStatus(court, 'BAO_TRI_LUOI')">🔧 Bảo trì</button>
+                }
               </div>
             </td>
           </tr>
@@ -146,8 +150,8 @@
     <div class="modal-overlay" (click)="showModal.set(false)">
       <div class="modal-card" (click)="$event.stopPropagation()">
         <div class="modal-header">
-          <h3>{{ isEdit() ? 'Sửa sân' : 'Thêm sân mới' }}</h3>
-          <button class="close-btn" (click)="showModal.set(false)">x</button>
+          <h3>{{ isEdit() ? '✏️ Sửa sân' : '➕ Thêm sân mới' }}</h3>
+          <button class="close-btn" (click)="showModal.set(false)">✕</button>
         </div>
         <form [formGroup]="courtForm" (ngSubmit)="onSubmit()">
           <div class="modal-body">
@@ -176,7 +180,7 @@
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" (click)="showModal.set(false)">Hủy</button>
-            <button type="submit" class="btn btn-primary">Lưu</button>
+            <button type="submit" class="btn btn-primary">💾 Lưu</button>
           </div>
         </form>
       </div>

@@ -1,6 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable, catchError, map, of, tap } from 'rxjs';
+import { Observable, catchError, map, of, tap, throwError } from 'rxjs';
 import { Customer } from '../models';
 import { API_ENDPOINTS } from '../constants/api-endpoints';
 import { ApiResponse } from '../models/api-response.model';
@@ -28,8 +28,23 @@ export class CustomerService {
     }) as Observable<ApiResponse<BackendCustomer[]>>).pipe(
       map(response => (response.data || []).map((item, index) => this.toUiCustomer(item, index))),
       tap(customers => this.customersSignal.set(customers)),
-      catchError(() => of([]))
+      catchError(err => throwError(() => err))
     );
+  }
+
+  fetchVipPoints(backendId: string): Observable<number> {
+    return (this.http.get(API_ENDPOINTS.CUSTOMERS.VIP(backendId)) as Observable<ApiResponse<{ diemTichLuy?: number; diem_tich_luy?: number } | null>>).pipe(
+      map(response => response.data?.diemTichLuy ?? response.data?.diem_tich_luy ?? 0),
+      catchError(() => of(0))
+    );
+  }
+
+  refreshCustomerVip(customerId: number): void {
+    const customer = this.findById(customerId);
+    if (!customer?.backendId) return;
+    this.fetchVipPoints(customer.backendId).subscribe(points => {
+      this.customersSignal.update(list => list.map(item => item.id === customerId ? { ...item, points } : item));
+    });
   }
 
   getAllCustomers(): Customer[] {
@@ -140,12 +155,13 @@ export class CustomerService {
     return newCustomer;
   }
 
-  blacklistCustomer(backendId: string, reason = 'Blacklisted by staff'): Observable<Customer | null> {
-    return (this.http.patch(API_ENDPOINTS.CUSTOMERS.BLACKLIST(backendId), {}) as Observable<ApiResponse<BackendCustomer>>).pipe(
-      tap(() => this.fetchCustomers()),
-      map(response => {
-        const existing = this.customersSignal().find(c => c.backendId === backendId);
-        return existing ? { ...existing, isBlacklisted: true, blacklistReason: reason } : null;
+  blacklistCustomer(backendId: string, reason: string): Observable<Customer | null> {
+    return (this.http.patch(API_ENDPOINTS.CUSTOMERS.BLACKLIST(backendId), { reason }) as Observable<ApiResponse<BackendCustomer>>).pipe(
+      map(response => this.mergeUiCustomer(response.data, backendId)),
+      tap(customer => {
+        if (customer) {
+          this.customersSignal.update(list => list.map(item => item.backendId === backendId ? customer : item));
+        }
       }),
       catchError(() => of(null))
     );
@@ -153,26 +169,28 @@ export class CustomerService {
 
   activateCustomer(backendId: string): Observable<Customer | null> {
     return (this.http.patch(API_ENDPOINTS.CUSTOMERS.ACTIVATE(backendId), {}) as Observable<ApiResponse<BackendCustomer>>).pipe(
-      tap(() => this.fetchCustomers()),
-      map(() => this.customersSignal().find(c => c.backendId === backendId) || null),
+      map(response => this.mergeUiCustomer(response.data, backendId)),
+      tap(customer => {
+        if (customer) {
+          this.customersSignal.update(list => list.map(item => item.backendId === backendId ? customer : item));
+        }
+      }),
       catchError(() => of(null))
     );
   }
 
-  addCompletedBooking(phone: string, name: string, totalPaid: number): void {
-    let customer = this.findByPhone(phone);
-    if (!customer) {
-      customer = this.addCustomer({
-        name,
-        phone,
-        email: `${phone.replace(/\s+/g, '')}@badmintonhub.com`
-      });
-    }
+  private mergeUiCustomer(item: BackendCustomer, backendId: string): Customer {
+    const existing = this.customersSignal().find(c => c.backendId === backendId);
+    const ui = this.toUiCustomer(item, existing ? existing.id - 1 : this.customersSignal().length);
+    return existing ? { ...ui, id: existing.id, points: existing.points } : ui;
+  }
 
-    const pointsToAdd = Math.floor(totalPaid / 10000);
-    this.customersSignal.update(list => list.map(item => item.id === customer!.id
-      ? { ...item, totalBookings: item.totalBookings + 1, points: (item.points || 0) + pointsToAdd }
-      : item));
+  addCompletedBooking(phone: string, _name: string, _totalPaid: number): void {
+    const customer = this.findByPhone(phone);
+    if (customer) {
+      this.refreshCustomerVip(customer.id);
+      this.fetchCustomers();
+    }
   }
 
   private toUiCustomer(item: BackendCustomer, index: number): Customer {
@@ -184,7 +202,7 @@ export class CustomerService {
       phone: item.soDienThoai || item.phoneNumber || '',
       email: item.email || '',
       isBlacklisted: status === 'BLACKLIST' || status === 'BLACKLISTED',
-      blacklistReason: status === 'BLACKLIST' || status === 'BLACKLISTED' ? 'Backend customer status is BLACKLISTED' : undefined,
+      blacklistReason: item.blacklistReason ?? undefined,
       totalBookings: Number(item.totalBookings ?? item.totalLichDats ?? 0),
       joinDate: item.createdAt?.slice(0, 10) || new Date().toISOString().split('T')[0],
       points: 0

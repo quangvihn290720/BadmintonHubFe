@@ -155,7 +155,7 @@
   @if (showCheckInModal() && activeBooking()) {
   @let booking = activeBooking()!;
   <div class="modal-overlay" (click)="showCheckInModal.set(false)">
-    <div class="modal-card select-modal" (click)="$event.stopPropagation()">
+    <div class="modal-card select-modal checkin-modal" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <h3>⚡ Nhận sân (Check-in)</h3>
         <button class="close-btn" (click)="showCheckInModal.set(false)">✕</button>
@@ -166,28 +166,43 @@
           <div class="info-row"><span>Khách hàng:</span><strong>{{ booking.customerName }}</strong></div>
           <div class="info-row"><span>Số điện thoại:</span><strong>{{ booking.customerPhone }}</strong></div>
           <div class="info-row"><span>Sân đặt:</span><strong>{{ booking.courtName }}</strong></div>
-          <div class="info-row"><span>Thời gian đăng ký:</span><strong>{{ booking.startTime }} - {{ booking.endTime
-              }}</strong></div>
-          <div class="info-row"><span>Tiền cọc đã đóng:</span><strong class="text-success">{{
-              formatCurrency(booking.deposit) }}</strong></div>
+          <div class="info-row"><span>Thời gian đăng ký:</span><strong>{{ booking.startTime }} - {{ booking.endTime }}</strong></div>
+          <div class="info-row"><span>Tiền cọc đã đóng:</span><strong class="text-success">{{ formatCurrency(booking.deposit) }}</strong></div>
         </div>
+
         @if (!canCheckIn(booking)) {
-          <div class="checkin-warning-alert" style="background: rgba(220, 38, 38, 0.06); border: 1px solid rgba(220, 38, 38, 0.15); color: var(--color-error); border-radius: 10px; padding: 12px; font-size: 13px; margin-top: 12px; line-height: 1.5;">
-            <strong>⚠️ Không thể nhận sân lúc này:</strong> Chỉ cho phép check-in vào đúng ngày đặt sân và trước giờ chơi tối đa 15 phút.
-          </div>
+        <div class="checkin-warning-alert">
+          <strong>⚠️ Không thể nhận sân lúc này</strong>
+          <p>Chỉ cho phép check-in vào đúng ngày đặt sân và trước giờ chơi tối đa 15 phút.</p>
+        </div>
         } @else {
-          <p class="modal-desc">Khách hàng đã đến đúng giờ. Xác nhận chuyển trạng thái sang <strong>Đang chơi</strong>?</p>
+        <p class="modal-desc">Khách hàng đã đến đúng giờ. Xác nhận chuyển trạng thái sang <strong>Đang chơi</strong>?</p>
         }
+
+        <button type="button" class="checkin-primary-btn" [disabled]="!canCheckIn(booking)" (click)="confirmCheckIn()">
+          <span class="checkin-primary-icon">🏸</span>
+          <span class="checkin-primary-text">
+            <strong>Nhận sân &amp; Bắt đầu chơi</strong>
+            <small>Bắt đầu phiên chơi ngay</small>
+          </span>
+        </button>
+
+        <div class="checkin-manage-section">
+          <span class="checkin-manage-label">Thao tác khác</span>
+          <div class="checkin-manage-grid">
+            <button type="button" class="checkin-manage-btn" (click)="openRescheduleModal(booking)">
+              <span class="manage-btn-icon">📅</span>
+              <span class="manage-btn-label">Đổi lịch chơi</span>
+            </button>
+            <button type="button" class="checkin-manage-btn checkin-manage-danger" (click)="confirmCancelBooking(booking.id)">
+              <span class="manage-btn-icon">🗑️</span>
+              <span class="manage-btn-label">Hủy lịch đặt</span>
+            </button>
+          </div>
+        </div>
       </div>
-      <div class="modal-footer" style="display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
-        <div style="display: flex; gap: 8px;">
-          <button class="btn btn-secondary text-error" (click)="confirmCancelBooking(booking.id)" style="color: var(--color-error); border-color: rgba(220, 38, 38, 0.2);">🗑️ Hủy lịch đặt</button>
-          <button class="btn btn-secondary text-warning" (click)="openRescheduleModal(booking)" style="color: var(--color-warning); border-color: rgba(245, 158, 11, 0.2);">📅 Đổi lịch chơi</button>
-        </div>
-        <div style="display: flex; gap: 8px;">
-          <button class="btn btn-secondary" (click)="showCheckInModal.set(false)">Hủy</button>
-          <button class="btn btn-primary" [disabled]="!canCheckIn(booking)" (click)="confirmCheckIn()">🏸 Nhận sân & Bắt đầu chơi</button>
-        </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="showCheckInModal.set(false)">Đóng</button>
       </div>
     </div>
   </div>
