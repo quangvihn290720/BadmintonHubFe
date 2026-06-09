@@ -1,13 +1,16 @@
 import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { StatusBadgeComponent } from '../../shared/components/status-badge/status-badge.component';
 import { CustomerService } from '../../core/services/customer.service';
 import { BookingService } from '../../core/services/booking.service';
 import { PricingService } from '../../core/services/pricing.service';
 import { Customer, Booking, getVipTier } from '../../core/models';
 
+type CustomerActionType = 'blacklist' | 'activate';
+
 @Component({
   selector: 'app-customers',
-  imports: [StatusBadgeComponent],
+  imports: [StatusBadgeComponent, FormsModule],
   templateUrl: './customers.component.html',
   styleUrl: './customers.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -57,14 +60,13 @@ export class CustomersComponent {
   readonly selectedCustomer = signal<Customer | null>(null);
   readonly showDetailsModal = signal<boolean>(false);
   readonly actionMessage = signal<string>('');
+  readonly customerBookings = signal<Booking[]>([]);
+  readonly loadingBookings = signal<boolean>(false);
 
-  readonly customerBookings = computed<Booking[]>(() => {
-    const cust = this.selectedCustomer();
-    if (!cust) return [];
-    return this.bookingService.bookings()
-      .filter(b => b.customerPhone === cust.phone)
-      .sort((a, b) => b.date.localeCompare(a.date) || b.startTime.localeCompare(a.startTime));
-  });
+  readonly pendingAction = signal<CustomerActionType | null>(null);
+  readonly actionReason = signal<string>('');
+  readonly actionReasonError = signal<string>('');
+  readonly actionSubmitting = signal<boolean>(false);
 
   readonly customerTotalSpent = computed<number>(() => {
     return this.customerBookings().reduce((sum, b) => {
@@ -74,32 +76,114 @@ export class CustomersComponent {
   });
 
   openDetailsModal(customer: Customer): void {
+    this.pendingAction.set(null);
+    this.actionReason.set('');
+    this.actionReasonError.set('');
     this.selectedCustomer.set(customer);
     this.actionMessage.set('');
+    this.customerBookings.set([]);
     this.showDetailsModal.set(true);
+    this.loadCustomerBookings(customer);
+    if (customer.backendId) {
+      this.customerService.fetchVipPoints(customer.backendId).subscribe(points => {
+        this.selectedCustomer.update(c => c ? { ...c, points } : c);
+      });
+    }
   }
 
-  blacklistSelected(): void {
-    const cust = this.selectedCustomer();
-    if (!cust?.backendId) return;
-    this.customerService.blacklistCustomer(cust.backendId).subscribe({
-      next: () => {
-        this.actionMessage.set('Đã đưa khách vào blacklist.');
-        this.showDetailsModal.set(false);
+  closeDetailsModal(): void {
+    this.showDetailsModal.set(false);
+    this.pendingAction.set(null);
+    this.actionReason.set('');
+    this.actionReasonError.set('');
+  }
+
+  onModalOverlayClick(): void {
+    if (this.pendingAction()) {
+      this.cancelActionConfirm();
+      return;
+    }
+    this.closeDetailsModal();
+  }
+
+  private loadCustomerBookings(customer: Customer): void {
+    if (!customer.backendId) return;
+    this.loadingBookings.set(true);
+    this.bookingService.fetchBookingsByCustomer(customer.backendId).subscribe({
+      next: bookings => {
+        this.customerBookings.set(
+          [...bookings].sort((a, b) => b.date.localeCompare(a.date) || b.startTime.localeCompare(a.startTime))
+        );
+        this.loadingBookings.set(false);
       },
-      error: () => this.actionMessage.set('Không thể blacklist khách hàng.')
+      error: () => this.loadingBookings.set(false)
     });
   }
 
-  activateSelected(): void {
+  openBlacklistConfirm(): void {
+    this.pendingAction.set('blacklist');
+    this.actionReason.set('');
+    this.actionReasonError.set('');
+  }
+
+  openActivateConfirm(): void {
+    this.pendingAction.set('activate');
+    this.actionReason.set('');
+    this.actionReasonError.set('');
+  }
+
+  cancelActionConfirm(): void {
+    if (this.actionSubmitting()) return;
+    this.pendingAction.set(null);
+    this.actionReason.set('');
+    this.actionReasonError.set('');
+  }
+
+  confirmAction(): void {
+    const action = this.pendingAction();
     const cust = this.selectedCustomer();
-    if (!cust?.backendId) return;
-    this.customerService.activateCustomer(cust.backendId).subscribe({
-      next: () => {
-        this.actionMessage.set('Đã kích hoạt lại khách hàng.');
-        this.showDetailsModal.set(false);
+    if (!action || !cust?.backendId) return;
+
+    const reason = this.actionReason().trim();
+    if (action === 'blacklist' && !reason) {
+      this.actionReasonError.set('Vui lòng nhập lý do blacklist.');
+      return;
+    }
+
+    this.actionSubmitting.set(true);
+    this.actionReasonError.set('');
+
+    const request$ = action === 'blacklist'
+      ? this.customerService.blacklistCustomer(cust.backendId, reason)
+      : this.customerService.activateCustomer(cust.backendId);
+
+    request$.subscribe({
+      next: updated => {
+        this.actionSubmitting.set(false);
+        if (!updated) {
+          this.actionReasonError.set(action === 'blacklist'
+            ? 'Không thể blacklist khách hàng.'
+            : 'Không thể kích hoạt khách hàng.');
+          return;
+        }
+        this.selectedCustomer.set(updated);
+        this.pendingAction.set(null);
+        this.actionReason.set('');
+        this.actionMessage.set(
+          action === 'blacklist'
+            ? 'Đã đưa khách vào blacklist.'
+            : reason
+              ? `Đã kích hoạt lại khách hàng. Ghi chú: ${reason}`
+              : 'Đã kích hoạt lại khách hàng.'
+        );
+        this.loadCustomerBookings(updated);
       },
-      error: () => this.actionMessage.set('Không thể kích hoạt khách hàng.')
+      error: () => {
+        this.actionSubmitting.set(false);
+        this.actionReasonError.set(action === 'blacklist'
+          ? 'Không thể blacklist khách hàng.'
+          : 'Không thể kích hoạt khách hàng.');
+      }
     });
   }
 
@@ -128,7 +212,6 @@ export class CustomersComponent {
     }
   }
 
-  // Masking functions for security
   maskPhone(phone: string): string {
     if (!phone || phone.length < 6) return phone;
     return phone.substring(0, 3) + '****' + phone.substring(phone.length - 3);
@@ -171,4 +254,3 @@ export class CustomersComponent {
     this.searchQuery.set('');
   }
 }
-

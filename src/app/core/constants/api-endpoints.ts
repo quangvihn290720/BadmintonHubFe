@@ -72,7 +72,8 @@ const KHACH_HANGS = {
   STATUS: (id: string) => `/khachhangs/${id}/status`,
   BLACKLIST: (id: string) => `/khachhangs/${id}/blacklist`,
   ACTIVATE: (id: string) => `/khachhangs/${id}/activate`,
-  LICHDAT: (id: number) => `/khachhangs/${id}/lichdat`
+  VIP: (id: string) => `/khachhangs/${id}/vip`,
+  LICHDATS: (id: string) => `/khachhangs/${id}/lichdats`
 } as const;
 
 const KHUNG_GIO = {

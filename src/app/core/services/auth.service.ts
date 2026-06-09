@@ -132,7 +132,9 @@ export class AuthService {
   }
 
   login(username: string, password: string): Observable<{ success: boolean; message: string }> {
-    return (this.http.post(API_ENDPOINTS.AUTH.LOGIN, { username, password }) as Observable<ApiResponse<LoginResponse>>)
+    this.apiConfig.setToken(null);
+    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
+    return (this.http.post(API_ENDPOINTS.AUTH.LOGIN, { username, password }, { headers }) as Observable<ApiResponse<LoginResponse>>)
       .pipe(
         tap(response => {
           if (!response.success || !response.data?.accessToken) {
@@ -157,6 +159,8 @@ export class AuthService {
           let errorMessage = 'Không thể kết nối đến máy chủ backend.';
           if (err.status === 401) {
             errorMessage = 'Tên đăng nhập hoặc mật khẩu không chính xác.';
+          } else if (err.status === 400) {
+            errorMessage = 'Dữ liệu đăng nhập không hợp lệ. Vui lòng thử lại.';
           } else if (err.error && typeof err.error === 'object') {
             errorMessage = getFriendlyErrorMessage(err.error.code, err.error.message);
           }

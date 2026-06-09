@@ -103,12 +103,71 @@
 
   <!-- Customer Details Modal -->
   @if (showDetailsModal() && selectedCustomer(); as cust) {
-  <div class="modal-overlay" (click)="showDetailsModal.set(false)">
-    <div class="modal-card customer-modal-card" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <h3>👤 Chi tiết thông tin khách hàng</h3>
-        <button class="close-btn" (click)="showDetailsModal.set(false)">✕</button>
+  <div class="modal-overlay" (click)="onModalOverlayClick()">
+    <div class="modal-card customer-modal-card" [class.confirm-mode]="pendingAction()" (click)="$event.stopPropagation()">
+      <div class="modal-header" [class.header-warning]="pendingAction() === 'blacklist'" [class.header-success]="pendingAction() === 'activate'">
+        <h3>
+          @if (pendingAction() === 'blacklist') {
+            ⚠️ Xác nhận blacklist
+          } @else if (pendingAction() === 'activate') {
+            ✅ Kích hoạt lại khách hàng
+          } @else {
+            👤 Chi tiết thông tin khách hàng
+          }
+        </h3>
+        <button class="close-btn" (click)="closeDetailsModal()">✕</button>
       </div>
+
+      @if (pendingAction()) {
+      <div class="modal-body">
+        <div class="customer-profile-header confirm-profile">
+          <div class="avatar-circle">{{ cust.name.charAt(0) }}</div>
+          <div class="profile-meta">
+            <h4>{{ cust.name }}</h4>
+            <p class="phone-num">📞 {{ cust.phone }}</p>
+          </div>
+        </div>
+
+        @if (pendingAction() === 'blacklist') {
+        <div class="info-callout info-callout-warning">
+          <strong>Khách sẽ bị chặn đặt sân mới.</strong>
+          Các lịch đã đặt trước đó vẫn được giữ nguyên và hiển thị trong lịch sử.
+        </div>
+        } @else {
+        <div class="info-callout info-callout-info">
+          Khách hàng sẽ được chuyển về trạng thái <strong>Hoạt động</strong> và có thể đặt sân bình thường.
+        </div>
+        }
+
+        <div class="form-group">
+          <label class="form-label" for="actionReason">
+            {{ pendingAction() === 'blacklist' ? 'Lý do blacklist' : 'Ghi chú kích hoạt' }}
+            @if (pendingAction() === 'blacklist') { <span class="required">*</span> }
+          </label>
+          <textarea id="actionReason" class="form-input form-textarea" rows="3"
+            [placeholder]="pendingAction() === 'blacklist' ? 'VD: Nợ tiền sân, vi phạm nội quy...' : 'Ghi chú nội bộ (không bắt buộc)...'"
+            [ngModel]="actionReason()" (ngModelChange)="actionReason.set($event); actionReasonError.set('')">
+          </textarea>
+          @if (actionReasonError()) {
+          <span class="field-error">{{ actionReasonError() }}</span>
+          }
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" [disabled]="actionSubmitting()" (click)="cancelActionConfirm()">
+          ← Quay lại
+        </button>
+        @if (pendingAction() === 'blacklist') {
+        <button type="button" class="btn btn-danger" [disabled]="actionSubmitting()" (click)="confirmAction()">
+          {{ actionSubmitting() ? 'Đang xử lý...' : '🚫 Xác nhận Blacklist' }}
+        </button>
+        } @else {
+        <button type="button" class="btn btn-primary" [disabled]="actionSubmitting()" (click)="confirmAction()">
+          {{ actionSubmitting() ? 'Đang xử lý...' : '✅ Xác nhận kích hoạt' }}
+        </button>
+        }
+      </div>
+      } @else {
       <div class="modal-body scrollable-modal-body">
         <!-- Profile Quick Info -->
         <div class="customer-profile-header">
@@ -159,7 +218,12 @@
         <!-- Booking History -->
         <div class="history-section">
           <h4 class="section-title">📅 Lịch sử giao dịch đặt sân</h4>
-          @if (customerBookings().length > 0) {
+          @if (loadingBookings()) {
+          <div class="empty-history">
+            <span class="empty-icon">⏳</span>
+            <p>Đang tải lịch sử đặt sân...</p>
+          </div>
+          } @else if (customerBookings().length > 0) {
           <div class="history-list">
             @for (b of customerBookings(); track b.id) {
             <div class="history-item" [class.cancelled-item]="b.status === 'cancelled'">
@@ -202,12 +266,13 @@
       </div>
       <div class="modal-footer">
         @if (!cust.isBlacklisted) {
-          <button class="btn btn-secondary" style="color: var(--color-error);" (click)="blacklistSelected()">Blacklist</button>
+          <button type="button" class="btn btn-outline-danger" (click)="openBlacklistConfirm()">🚫 Blacklist</button>
         } @else {
-          <button class="btn btn-primary" (click)="activateSelected()">Kích hoạt lại</button>
+          <button type="button" class="btn btn-primary" (click)="openActivateConfirm()">✅ Kích hoạt lại</button>
         }
-        <button class="btn btn-secondary" (click)="showDetailsModal.set(false)">Đóng</button>
+        <button type="button" class="btn btn-secondary" (click)="closeDetailsModal()">Đóng</button>
       </div>
+      }
     </div>
   </div>
   }

@@ -1,12 +1,22 @@
 <div class="page">
   <div class="page-header">
-    <h2 class="page-title">💳 Thanh toán & Quản lý giao dịch</h2>
-    <p class="page-subtitle">Quản lý hóa đơn phiên chơi đang hoạt động và theo dõi giao dịch khách hàng</p>
+    <div class="page-header-main">
+      <h2 class="page-title">💳 Thanh toán & Quản lý giao dịch</h2>
+      <p class="page-subtitle">Theo dõi hóa đơn theo <strong>ngày chơi sân</strong> — cọc có thể thu trước ngày chơi</p>
+    </div>
+    <div class="filter-controls-group date-picker-group">
+      <label class="control-label">Ngày chơi sân:</label>
+      <div class="date-picker">
+        <button type="button" class="nav-day-btn" (click)="adjustDate(-1)">◀</button>
+        <input type="date" class="date-input" [value]="selectedDate()" (change)="onDateChange($event)">
+        <button type="button" class="nav-day-btn" (click)="adjustDate(1)">▶</button>
+      </div>
+    </div>
   </div>
 
   <div class="stats-row">
     <div class="mini-stat">
-      <span class="mini-label">Chờ thu (Tiền cọc / Còn lại)</span>
+      <span class="mini-label">Chờ thu (cọc / còn lại) — {{ selectedDate() }}</span>
       <span class="mini-value text-warning">{{ pendingCount() }} hóa đơn</span>
     </div>
     <div class="mini-stat">
@@ -14,8 +24,12 @@
       <span class="mini-value text-success">{{ paidCount() }} hóa đơn</span>
     </div>
     <div class="mini-stat">
-      <span class="mini-label">Tổng thực thu hôm nay</span>
+      <span class="mini-label">Dự kiến thu theo lịch chơi</span>
       <span class="mini-value text-primary">{{ totalRevenue() }}</span>
+    </div>
+    <div class="mini-stat">
+      <span class="mini-label">Tiền thu thực tế trong ngày {{ selectedDate() }}</span>
+      <span class="mini-value text-primary">{{ cashCollectedTotal() }}</span>
     </div>
   </div>
 

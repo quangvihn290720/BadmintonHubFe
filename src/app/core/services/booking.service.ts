@@ -73,6 +73,15 @@ export class BookingService {
         const otherDates = this.bookingsSignal().filter(booking => booking.date !== date);
         this.bookingsSignal.set([...otherDates, ...bookings]);
       }),
+      catchError(err => throwError(() => err))
+    );
+  }
+
+  fetchBookingsByCustomer(backendId: string): Observable<Booking[]> {
+    return (this.http.get(API_ENDPOINTS.CUSTOMERS.LICHDATS(backendId)) as Observable<ApiResponse<BackendScheduleBooking[]>>).pipe(
+      map(response => (response.data || []).map(item =>
+        this.toUiBooking(normalizeScheduleBooking(item as unknown as Record<string, unknown>) as BackendScheduleBooking)
+      )),
       catchError(() => of([]))
     );
   }
@@ -135,7 +144,6 @@ export class BookingService {
 
     const body: CreateBookingRequest = {
       khachhangId: this.customerService.getBackendCustomerId(data.customerId),
-      nhanvienId: session.id,
       loaisanId,
       startTime: `${data.date}T${data.startTime}:00`,
       endTime: `${data.date}T${data.endTime}:00`,
@@ -163,7 +171,7 @@ export class BookingService {
         this.fetchSchedule(data.date).subscribe();
       }),
       map(saved => saved.booking),
-      catchError(() => of(booking))
+      catchError(err => throwError(() => err))
     );
   }
 
@@ -192,7 +200,12 @@ export class BookingService {
     if (backendId) {
       (this.http.post(API_ENDPOINTS.BOOKINGS.CHECKIN(backendId), {}, {
         headers: new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID() })
-      }) as Observable<ApiResponse<unknown>>).pipe(catchError(() => of(null))).subscribe(() => this.fetchBookings());
+      }) as Observable<ApiResponse<unknown>>).pipe(
+        catchError(err => {
+          this.updateStatus(bookingId, BookingStatus.Deposited);
+          return throwError(() => err);
+        })
+      ).subscribe(() => this.fetchBookings());
     }
   }
 
@@ -386,7 +399,7 @@ export class BookingService {
     }, { headers: new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID() }) }) as Observable<ApiResponse<unknown>>).pipe(
       tap(() => {
         this.updateBookingSchedule(bookingId, courtId, courtName, date, startTime, endTime);
-        this.fetchBookings(date).subscribe();
+        this.fetchBookings(date);
       }),
       map(response => response.data),
       catchError(err => {
