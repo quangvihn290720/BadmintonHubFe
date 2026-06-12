@@ -1,3 +1,4 @@
+import { AppIconComponent } from '../../shared/components/app-icon/app-icon.component';
 import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { StatusBadgeComponent } from '../../shared/components/status-badge/status-badge.component';
@@ -10,7 +11,7 @@ type CustomerActionType = 'blacklist' | 'activate';
 
 @Component({
   selector: 'app-customers',
-  imports: [StatusBadgeComponent, FormsModule],
+  imports: [AppIconComponent, StatusBadgeComponent, FormsModule],
   templateUrl: './customers.component.html',
   styleUrl: './customers.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

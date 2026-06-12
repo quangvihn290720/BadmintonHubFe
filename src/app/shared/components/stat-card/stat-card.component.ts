@@ -1,11 +1,13 @@
 import { Component, input, ChangeDetectionStrategy } from '@angular/core';
+import { AppIconComponent } from '../app-icon/app-icon.component';
 
 @Component({
   selector: 'app-stat-card',
+  imports: [AppIconComponent],
   template: `
     <div class="stat-card" [style.--accent-color]="color()">
       <div class="stat-icon-wrapper">
-        <span class="stat-icon">{{ icon() }}</span>
+        <app-icon class="stat-icon" [name]="icon()" [size]="22" [filled]="filled()" />
       </div>
       <div class="stat-info">
         <span class="stat-label">{{ label() }}</span>
@@ -38,8 +40,8 @@ import { Component, input, ChangeDetectionStrategy } from '@angular/core';
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
+      color: var(--accent-color);
     }
-    .stat-icon { font-size: 22px; }
     .stat-info {
       display: flex;
       flex-direction: column;
@@ -57,8 +59,9 @@ import { Component, input, ChangeDetectionStrategy } from '@angular/core';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class StatCardComponent {
-  icon = input<string>('📊');
+  icon = input<string>('analytics');
   label = input<string>('');
   value = input<string>('0');
   color = input<string>('#2563EB');
+  filled = input<boolean>(false);
 }

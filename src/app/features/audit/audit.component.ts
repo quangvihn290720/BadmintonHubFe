@@ -1,8 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { AuditApiService, AuditLogEntry } from '../../core/services/audit-api.service';
+import { AppIconComponent } from '../../shared/components/app-icon/app-icon.component';
 
 @Component({
   selector: 'app-audit',
+  imports: [AppIconComponent],
   templateUrl: './audit.component.html',
   styleUrl: './audit.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

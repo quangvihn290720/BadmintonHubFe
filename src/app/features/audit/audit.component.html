@@ -1,11 +1,15 @@
 <div class="page">
   <div class="page-header">
     <div>
-      <h2 class="page-title">📋 Nhật ký hoạt động</h2>
+      <h2 class="page-title"><app-icon name="assignment" [size]="22" /> Nhật ký hoạt động</h2>
       <p class="page-subtitle">Lịch sử thao tác admin và vòng đời lịch đặt sân</p>
     </div>
     <button class="btn btn-secondary" (click)="reload()" [disabled]="loading()">
-      {{ loading() ? '⏳ Đang tải...' : '🔄 Tải lại' }}
+      @if (loading()) {
+        <app-icon name="hourglass_top" [size]="28" /> Đang tải...
+      } @else {
+        <app-icon name="refresh" [size]="18" /> Tải lại
+      }
     </button>
   </div>
 
@@ -15,14 +19,14 @@
 
   <div class="stats-row">
     <div class="stat-card">
-      <span class="stat-icon">📊</span>
+      <span class="stat-icon"><app-icon name="analytics" [size]="22" /></span>
       <div>
         <div class="stat-value">{{ filteredLogs().length }}</div>
         <div class="stat-label">Bản ghi hiển thị</div>
       </div>
     </div>
     <div class="stat-card">
-      <span class="stat-icon">🕐</span>
+      <span class="stat-icon"><app-icon name="schedule" [size]="22" /></span>
       <div>
         <div class="stat-value">{{ latestLogTime() || '—' }}</div>
         <div class="stat-label">Hoạt động gần nhất</div>
@@ -32,7 +36,7 @@
 
   <div class="search-filter-row">
     <div class="search-box-wrapper">
-      <span class="search-icon">🔍</span>
+      <span class="search-icon"><app-icon name="search" [size]="18" /></span>
       <input type="text" class="search-input" placeholder="Tìm theo hành động, đối tượng, chi tiết..."
         [value]="searchQuery()" (input)="onSearch($event)">
     </div>
@@ -89,10 +93,10 @@
             <tr>
               <td colspan="4" class="empty-text">
                 @if (loading()) {
-                  <span class="empty-icon">⏳</span>
+                  <span class="empty-icon"><app-icon name="hourglass_top" [size]="28" /></span>
                   Đang tải dữ liệu...
                 } @else {
-                  <span class="empty-icon">📭</span>
+                  <span class="empty-icon"><app-icon name="inbox" [size]="28" /></span>
                   Không có bản ghi audit nào phù hợp.
                 }
               </td>

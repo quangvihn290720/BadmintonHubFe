@@ -1,3 +1,4 @@
+import { AppIconComponent } from '../../../shared/components/app-icon/app-icon.component';
 import { Component, OnInit, ChangeDetectionStrategy, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -19,7 +20,7 @@ interface TimeSlot {
 
 @Component({
   selector: 'app-booking-new',
-  imports: [ReactiveFormsModule, ConfirmDialogComponent],
+  imports: [AppIconComponent, ReactiveFormsModule, ConfirmDialogComponent],
   templateUrl: './booking-new.component.html',
   styleUrl: './booking-new.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

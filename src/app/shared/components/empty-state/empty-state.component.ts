@@ -1,10 +1,12 @@
 import { Component, input, ChangeDetectionStrategy } from '@angular/core';
+import { AppIconComponent } from '../app-icon/app-icon.component';
 
 @Component({
   selector: 'app-empty-state',
+  imports: [AppIconComponent],
   template: `
     <div class="empty-state">
-      <span class="empty-icon">{{ icon() }}</span>
+      <app-icon class="empty-icon" [name]="icon()" [size]="48" />
       <h3 class="empty-title">{{ title() }}</h3>
       <p class="empty-message">{{ message() }}</p>
     </div>
@@ -19,9 +21,9 @@ import { Component, input, ChangeDetectionStrategy } from '@angular/core';
       text-align: center;
     }
     .empty-icon {
-      font-size: 48px;
       margin-bottom: 16px;
       opacity: 0.6;
+      color: var(--text-secondary);
     }
     .empty-title {
       font-size: 18px;
@@ -39,7 +41,7 @@ import { Component, input, ChangeDetectionStrategy } from '@angular/core';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EmptyStateComponent {
-  icon = input<string>('📭');
+  icon = input<string>('inbox');
   title = input<string>('Không có dữ liệu');
   message = input<string>('Chưa có dữ liệu để hiển thị');
 }

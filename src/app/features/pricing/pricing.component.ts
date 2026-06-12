@@ -1,3 +1,4 @@
+import { AppIconComponent } from '../../shared/components/app-icon/app-icon.component';
 import { Component, OnInit, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { PricingService } from '../../core/services/pricing.service';
@@ -6,7 +7,7 @@ import { PricingRule } from '../../core/models';
 
 @Component({
   selector: 'app-pricing',
-  imports: [ReactiveFormsModule],
+  imports: [AppIconComponent, ReactiveFormsModule],
   templateUrl: './pricing.component.html',
   styleUrl: './pricing.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

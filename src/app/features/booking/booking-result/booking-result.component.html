@@ -12,18 +12,18 @@
     </div>
     <div class="booking-code-card"><span class="code-label">Mã đặt sân</span><span class="code-value">{{ bookingCode() }}</span></div>
     <div class="details-card">
-      <div class="detail-row"><span class="detail-icon">👤</span><div class="detail-info"><span class="detail-label">Khách hàng</span><span class="detail-value">{{ state().customerName }}</span></div></div>
-      <div class="detail-row"><span class="detail-icon">🏸</span><div class="detail-info"><span class="detail-label">Sân</span><span class="detail-value">{{ state().courtName }}</span></div></div>
-      <div class="detail-row"><span class="detail-icon">📅</span><div class="detail-info"><span class="detail-label">Ngày</span><span class="detail-value">{{ formatDate(state().date || '') }}</span></div></div>
-      <div class="detail-row"><span class="detail-icon">⏰</span><div class="detail-info"><span class="detail-label">Thời gian</span><span class="detail-value">{{ state().startTime }} - {{ state().endTime }}</span></div></div>
-      <div class="detail-row"><span class="detail-icon">💰</span><div class="detail-info"><span class="detail-label">Tiền cọc</span><span class="detail-value highlight">{{ formatCurrency(state().deposit || 0) }}</span></div></div>
-      <div class="detail-row"><span class="detail-icon">💳</span><div class="detail-info"><span class="detail-label">Phương thức</span><span class="detail-value">{{ getPaymentMethodLabel() }}</span></div></div>
-      <div class="detail-row"><span class="detail-icon">🧾</span><div class="detail-info"><span class="detail-label">Tổng tiền</span><span class="detail-value">{{ formatCurrency(state().totalAmount || 0) }}</span></div></div>
+      <div class="detail-row"><span class="detail-icon"><app-icon name="person" [size]="18" /></span><div class="detail-info"><span class="detail-label">Khách hàng</span><span class="detail-value">{{ state().customerName }}</span></div></div>
+      <div class="detail-row"><span class="detail-icon"><app-icon name="sports_tennis" [size]="22" /></span><div class="detail-info"><span class="detail-label">Sân</span><span class="detail-value">{{ state().courtName }}</span></div></div>
+      <div class="detail-row"><span class="detail-icon"><app-icon name="calendar_month" [size]="22" /></span><div class="detail-info"><span class="detail-label">Ngày</span><span class="detail-value">{{ formatDate(state().date || '') }}</span></div></div>
+      <div class="detail-row"><span class="detail-icon"><app-icon name="schedule" [size]="22" /></span><div class="detail-info"><span class="detail-label">Thời gian</span><span class="detail-value">{{ state().startTime }} - {{ state().endTime }}</span></div></div>
+      <div class="detail-row"><span class="detail-icon"><app-icon name="payments" [size]="22" /></span><div class="detail-info"><span class="detail-label">Tiền cọc</span><span class="detail-value highlight">{{ formatCurrency(state().deposit || 0) }}</span></div></div>
+      <div class="detail-row"><span class="detail-icon"><app-icon name="credit_card" [size]="22" /></span><div class="detail-info"><span class="detail-label">Phương thức</span><span class="detail-value">{{ getPaymentMethodLabel() }}</span></div></div>
+      <div class="detail-row"><span class="detail-icon"><app-icon name="receipt_long" [size]="22" /></span><div class="detail-info"><span class="detail-label">Tổng tiền</span><span class="detail-value">{{ formatCurrency(state().totalAmount || 0) }}</span></div></div>
     </div>
     <div class="result-actions">
-      <button class="btn btn-primary" (click)="goToDashboard()">📅 Quay về lịch sân</button>
-      <button class="btn btn-outline" (click)="printReceipt()">🖨️ In phiếu đặt sân</button>
-      <button class="btn btn-success" (click)="newBooking()">➕ Tạo lịch đặt mới</button>
+      <button class="btn btn-primary" (click)="goToDashboard()"><app-icon name="calendar_month" [size]="22" /> Quay về lịch sân</button>
+      <button class="btn btn-outline" (click)="printReceipt()"><app-icon name="print" [size]="18" /> In phiếu đặt sân</button>
+      <button class="btn btn-success" (click)="newBooking()"><app-icon name="add" [size]="18" /> Tạo lịch đặt mới</button>
     </div>
   </div>
 </div>

@@ -1,3 +1,4 @@
+import { AppIconComponent } from '../../shared/components/app-icon/app-icon.component';
 import { Component, input, output, ChangeDetectionStrategy, inject, computed } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
@@ -15,7 +16,7 @@ interface NavSection {
 
 @Component({
   selector: 'app-sidebar',
-  imports: [RouterLink, RouterLinkActive],
+  imports: [AppIconComponent, RouterLink, RouterLinkActive],
   template: `
     <aside class="sidebar" [class.collapsed]="collapsed()">
       <div class="sidebar-header">
@@ -45,7 +46,7 @@ interface NavSection {
                [routerLink]="item.route"
                routerLinkActive="active"
                [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' }">
-              <span class="nav-icon" [innerHTML]="item.icon"></span>
+              <span class="nav-icon"><app-icon [name]="item.icon" [size]="22" /></span>
               @if (!collapsed()) {
                 <span class="nav-label">{{ item.label }}</span>
               }
@@ -136,30 +137,30 @@ export class SidebarComponent {
       {
         title: 'VẬN HÀNH',
         items: [
-          { label: 'Lịch sân & Lưới giờ', route: '/dashboard', icon: '📅' },
-          { label: 'Đặt sân mới', route: '/booking/new', icon: '🏸' }
+          { label: 'Lịch sân & Lưới giờ', route: '/dashboard', icon: 'calendar_month' },
+          { label: 'Đặt sân mới', route: '/booking/new', icon: 'sports_tennis' }
         ]
       },
       {
         title: 'KINH DOANH & KHÁCH HÀNG',
         items: [
-          { label: 'Thanh toán & Giao dịch', route: '/payment', icon: '💳' },
-          { label: 'Quản lý khách hàng', route: '/customers', icon: '👥' }
+          { label: 'Thanh toán & Giao dịch', route: '/payment', icon: 'credit_card' },
+          { label: 'Quản lý khách hàng', route: '/customers', icon: 'groups' }
         ]
       }
     ];
 
     if (isAdmin) {
       sections.push({
-        title: '⚡ QUẢN TRỊ VIÊN',
+        title: 'QUẢN TRỊ VIÊN',
         items: [
-          { label: 'Quản lý sân', route: '/courts', icon: '🏟️' },
-          { label: 'Cấu hình bảng giá', route: '/pricing', icon: '💰' },
-          { label: 'Quản lý dịch vụ', route: '/services', icon: '🥤' },
-          { label: 'Khuyến mãi', route: '/promotions', icon: '🎁' },
-          { label: 'Báo cáo & Thống kê', route: '/reports', icon: '📈' },
-          { label: 'Nhật ký audit', route: '/audit', icon: '📋' },
-          { label: 'Tài khoản nhân viên', route: '/staff', icon: '🔑' }
+          { label: 'Quản lý sân', route: '/courts', icon: 'stadium' },
+          { label: 'Cấu hình bảng giá', route: '/pricing', icon: 'payments' },
+          { label: 'Quản lý dịch vụ', route: '/services', icon: 'local_cafe' },
+          { label: 'Khuyến mãi', route: '/promotions', icon: 'redeem' },
+          { label: 'Báo cáo & Thống kê', route: '/reports', icon: 'trending_up' },
+          { label: 'Nhật ký audit', route: '/audit', icon: 'assignment' },
+          { label: 'Tài khoản nhân viên', route: '/staff', icon: 'key' }
         ]
       });
     }
