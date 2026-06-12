@@ -1,8 +1,10 @@
 import { Component, OnInit, OnDestroy, inject, output, ChangeDetectionStrategy, signal } from '@angular/core';
 import { AuthService } from '../../core/services/auth.service';
+import { AppIconComponent } from '../../shared/components/app-icon/app-icon.component';
 
 @Component({
   selector: 'app-topbar',
+  imports: [AppIconComponent],
   template: `
     <header class="topbar">
       <div class="topbar-left">
@@ -23,7 +25,11 @@ import { AuthService } from '../../core/services/auth.service';
           <div class="staff-details">
             <span class="staff-name">{{ staffName }}</span>
             <span class="staff-role" [style.color]="currentUser()?.role === 'admin' ? 'var(--color-primary)' : 'var(--text-secondary)'" [style.font-weight]="currentUser()?.role === 'admin' ? '700' : 'normal'">
-              {{ currentUser()?.role === 'admin' ? '🛡️ Quản trị viên' : 'Nhân viên' }}
+              @if (currentUser()?.role === 'admin') {
+                <span class="role-with-icon"><app-icon name="admin_panel_settings" [size]="12" /> Quản trị viên</span>
+              } @else {
+                Nhân viên
+              }
             </span>
           </div>
         </div>
@@ -79,6 +85,7 @@ import { AuthService } from '../../core/services/auth.service';
     .staff-details { display: flex; flex-direction: column; }
     .staff-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
     .staff-role { font-size: 11px; color: var(--text-secondary); }
+    .role-with-icon { display: inline-flex; align-items: center; gap: 4px; }
     .logout-btn {
       display: flex; align-items: center; gap: 6px; padding: 8px 14px;
       background: none; border: 1px solid var(--border-color); border-radius: 8px;

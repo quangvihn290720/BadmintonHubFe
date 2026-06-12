@@ -1,3 +1,4 @@
+import { AppIconComponent } from '../../shared/components/app-icon/app-icon.component';
 import { Component, ChangeDetectionStrategy, inject, computed, signal } from '@angular/core';
 import { StatCardComponent } from '../../shared/components/stat-card/stat-card.component';
 import { PricingService } from '../../core/services/pricing.service';
@@ -10,7 +11,7 @@ import { addDaysToDateString, todayLocalDate } from '../../core/utils/date.utils
 
 @Component({
   selector: 'app-reports',
-  imports: [StatCardComponent],
+  imports: [AppIconComponent, StatCardComponent],
   templateUrl: './reports.component.html',
   styleUrl: './reports.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

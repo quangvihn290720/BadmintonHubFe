@@ -1,3 +1,4 @@
+import { AppIconComponent } from '../../shared/components/app-icon/app-icon.component';
 import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -5,7 +6,7 @@ import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule],
+  imports: [AppIconComponent, ReactiveFormsModule],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
