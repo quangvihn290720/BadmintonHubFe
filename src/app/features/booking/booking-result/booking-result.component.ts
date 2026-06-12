@@ -2,9 +2,11 @@ import { Component, OnInit, ChangeDetectionStrategy, inject, signal } from '@ang
 import { Router } from '@angular/router';
 import { BookingStateService } from '../../../core/services/booking-state.service';
 import { PricingService } from '../../../core/services/pricing.service';
+import { AppIconComponent } from '../../../shared/components/app-icon/app-icon.component';
 
 @Component({
   selector: 'app-booking-result',
+  imports: [AppIconComponent],
   templateUrl: './booking-result.component.html',
   styleUrl: './booking-result.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

@@ -1,17 +1,17 @@
 <div class="page">
   <div class="page-header">
     <div>
-      <h2 class="page-title">🥤 Quản lý dịch vụ phụ trợ</h2>
+      <h2 class="page-title"><app-icon name="local_cafe" [size]="22" /> Quản lý dịch vụ phụ trợ</h2>
       <p class="page-subtitle">Thêm, sửa, xóa các sản phẩm nước uống, bóng cầu lông và phụ kiện thuê tại sân</p>
     </div>
     @if (isAdmin()) {
-      <button class="btn btn-primary" (click)="openAddModal()">➕ Thêm dịch vụ</button>
+      <button class="btn btn-primary" (click)="openAddModal()"><app-icon name="add" [size]="18" /> Thêm dịch vụ</button>
     }
   </div>
 
   <div class="search-filter-row">
     <div class="search-box-wrapper">
-      <span class="search-icon">🔍</span>
+      <span class="search-icon"><app-icon name="search" [size]="18" /></span>
       <input type="text" class="search-input" placeholder="Tìm kiếm theo tên dịch vụ..." [value]="searchQuery()" (input)="onSearch($event)">
     </div>
   </div>
@@ -38,8 +38,8 @@
               @if (isAdmin()) {
                 <td>
                   <div class="action-buttons">
-                    <button class="btn-icon btn-edit" (click)="openEditModal(s)">✏️ Sửa</button>
-                    <button class="btn-icon btn-delete" (click)="deleteService(s.id)">🗑️ Xóa</button>
+                    <button class="btn-icon btn-edit" (click)="openEditModal(s)"><app-icon name="edit" [size]="18" /> Sửa</button>
+                    <button class="btn-icon btn-delete" (click)="deleteService(s.id)"><app-icon name="delete" [size]="18" /> Xóa</button>
                   </div>
                 </td>
               }
@@ -47,7 +47,7 @@
           } @empty {
             <tr>
               <td colspan="4" class="empty-text">
-                <span class="empty-icon">📭</span>
+                <span class="empty-icon"><app-icon name="inbox" [size]="28" /></span>
                 Không tìm thấy dịch vụ nào phù hợp.
               </td>
             </tr>
@@ -60,8 +60,14 @@
       <div class="modal-overlay" (click)="showModal.set(false)">
         <div class="modal-card" (click)="$event.stopPropagation()">
           <div class="modal-header">
-            <h3>{{ isEdit() ? '✏️ Chỉnh sửa dịch vụ' : '➕ Thêm dịch vụ mới' }}</h3>
-            <button class="close-btn" (click)="showModal.set(false)">✕</button>
+            <h3>
+              @if (isEdit()) {
+                <app-icon name="edit" [size]="18" /> Chỉnh sửa dịch vụ
+              } @else {
+                <app-icon name="add" [size]="18" /> Thêm dịch vụ mới
+              }
+            </h3>
+            <button class="close-btn" (click)="showModal.set(false)"><app-icon name="close" [size]="20" /></button>
           </div>
           <form [formGroup]="serviceForm" (ngSubmit)="onSubmit()">
             <div class="modal-body">

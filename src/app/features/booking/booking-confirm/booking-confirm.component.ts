@@ -1,3 +1,4 @@
+import { AppIconComponent } from '../../../shared/components/app-icon/app-icon.component';
 import { Component, OnInit, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -11,7 +12,7 @@ import { PaymentMethod } from '../../../core/models';
 
 @Component({
   selector: 'app-booking-confirm',
-  imports: [ReactiveFormsModule],
+  imports: [AppIconComponent, ReactiveFormsModule],
   templateUrl: './booking-confirm.component.html',
   styleUrl: './booking-confirm.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

@@ -1,3 +1,4 @@
+import { AppIconComponent } from '../../shared/components/app-icon/app-icon.component';
 import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService, StaffMember } from '../../core/services/auth.service';
@@ -5,7 +6,7 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/c
 
 @Component({
   selector: 'app-staff',
-  imports: [ReactiveFormsModule, ConfirmDialogComponent],
+  imports: [AppIconComponent, ReactiveFormsModule, ConfirmDialogComponent],
   templateUrl: './staff.component.html',
   styleUrl: './staff.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

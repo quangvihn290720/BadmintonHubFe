@@ -1,10 +1,10 @@
 <div class="page">
   <div class="page-header">
     <div>
-      <h2 class="page-title">🎁 Quản lý khuyến mãi</h2>
+      <h2 class="page-title"><app-icon name="redeem" [size]="22" /> Quản lý khuyến mãi</h2>
       <p class="page-subtitle">Tạo và quản lý mã giảm giá áp dụng khi checkout</p>
     </div>
-    <button class="btn btn-primary" (click)="openAddModal()">➕ Thêm khuyến mãi</button>
+    <button class="btn btn-primary" (click)="openAddModal()"><app-icon name="add" [size]="18" /> Thêm khuyến mãi</button>
   </div>
 
   @if (error()) {
@@ -13,7 +13,7 @@
 
   <div class="search-filter-row">
     <div class="search-box-wrapper">
-      <span class="search-icon">🔍</span>
+      <span class="search-icon"><app-icon name="search" [size]="18" /></span>
       <input type="text" class="search-input" placeholder="Tìm theo mã khuyến mãi..." [value]="searchQuery()"
         (input)="onSearch($event)">
     </div>
@@ -49,7 +49,11 @@
               <td><code class="promo-code">{{ codeOf(item) }}</code></td>
               <td>
                 <span class="type-badge" [class.type-percent]="isPercent(item)" [class.type-fixed]="!isPercent(item)">
-                  {{ isPercent(item) ? '📊 Phần trăm' : '💵 Cố định' }}
+                  @if (isPercent(item)) {
+                    <app-icon name="analytics" [size]="22" /> Phần trăm
+                  } @else {
+                    <app-icon name="payments" [size]="18" /> Cố định
+                  }
                 </span>
               </td>
               <td class="discount-value">{{ discountOf(item) }}</td>
@@ -61,14 +65,22 @@
               <td [class.expired-date]="isExpired(item)">{{ formatExpiry(item) }}</td>
               <td>
                 <span class="status-badge" [class.status-active]="isActive(item)" [class.status-inactive]="!isActive(item)">
-                  {{ isActive(item) ? '✅ Hoạt động' : '⏸️ Ngưng' }}
+                  @if (isActive(item)) {
+                    <app-icon name="check_circle" [size]="22" /> Hoạt động
+                  } @else {
+                    <app-icon name="pause_circle" [size]="18" /> Ngưng
+                  }
                 </span>
               </td>
               <td>
                 <div class="action-buttons">
-                  <button class="btn-icon btn-edit" (click)="openEditModal(item)">✏️ Sửa</button>
+                  <button class="btn-icon btn-edit" (click)="openEditModal(item)"><app-icon name="edit" [size]="18" /> Sửa</button>
                   <button class="btn-icon btn-toggle" (click)="toggleStatus(item)">
-                    {{ isActive(item) ? '⏸️ Ngưng' : '▶️ Kích hoạt' }}
+                    @if (isActive(item)) {
+                      <app-icon name="pause_circle" [size]="18" /> Ngưng
+                    } @else {
+                      <app-icon name="play_arrow" [size]="18" /> Kích hoạt
+                    }
                   </button>
                 </div>
               </td>
@@ -76,7 +88,7 @@
           } @empty {
             <tr>
               <td colspan="7" class="empty-text">
-                <span class="empty-icon">📭</span>
+                <span class="empty-icon"><app-icon name="inbox" [size]="28" /></span>
                 Không tìm thấy khuyến mãi nào phù hợp.
               </td>
             </tr>
@@ -91,8 +103,14 @@
   <div class="modal-overlay" (click)="showModal.set(false)">
     <div class="modal-card" (click)="$event.stopPropagation()">
       <div class="modal-header">
-        <h3>{{ isEdit() ? '✏️ Sửa khuyến mãi' : '➕ Thêm khuyến mãi' }}</h3>
-        <button class="close-btn" (click)="showModal.set(false)">✕</button>
+        <h3>
+          @if (isEdit()) {
+            <app-icon name="edit" [size]="18" /> Sửa khuyến mãi
+          } @else {
+            <app-icon name="add" [size]="18" /> Thêm khuyến mãi
+          }
+        </h3>
+        <button class="close-btn" (click)="showModal.set(false)"><app-icon name="close" [size]="20" /></button>
       </div>
       <form [formGroup]="promotionForm" (ngSubmit)="onSubmit()">
         <div class="modal-body">

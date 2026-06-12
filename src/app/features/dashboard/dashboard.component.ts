@@ -1,3 +1,4 @@
+import { AppIconComponent } from '../../shared/components/app-icon/app-icon.component';
 import { Component, OnInit, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
 import { Router } from '@angular/router';
 import { StatCardComponent } from '../../shared/components/stat-card/stat-card.component';
@@ -13,7 +14,7 @@ import { ApiConfigService } from '../../core/services/api-config.service';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [StatCardComponent],
+  imports: [AppIconComponent, StatCardComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

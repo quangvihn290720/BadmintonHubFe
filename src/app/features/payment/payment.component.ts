@@ -1,3 +1,4 @@
+import { AppIconComponent } from '../../shared/components/app-icon/app-icon.component';
 import { Component, ChangeDetectionStrategy, inject, computed, signal, OnInit } from '@angular/core';
 import { StatusBadgeComponent } from '../../shared/components/status-badge/status-badge.component';
 import { BookingService } from '../../core/services/booking.service';
@@ -9,7 +10,7 @@ import { addDaysToDateString, todayLocalDate } from '../../core/utils/date.utils
 
 @Component({
   selector: 'app-payment',
-  imports: [StatusBadgeComponent],
+  imports: [AppIconComponent, StatusBadgeComponent],
   templateUrl: './payment.component.html',
   styleUrl: './payment.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

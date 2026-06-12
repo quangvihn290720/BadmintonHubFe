@@ -1,3 +1,4 @@
+import { AppIconComponent } from '../../shared/components/app-icon/app-icon.component';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { PromotionApiService, PromotionFormData } from '../../core/services/promotion-api.service';
@@ -6,7 +7,7 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/c
 
 @Component({
   selector: 'app-promotions',
-  imports: [ReactiveFormsModule, ConfirmDialogComponent],
+  imports: [AppIconComponent, ReactiveFormsModule, ConfirmDialogComponent],
   templateUrl: './promotions.component.html',
   styleUrl: './promotions.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
