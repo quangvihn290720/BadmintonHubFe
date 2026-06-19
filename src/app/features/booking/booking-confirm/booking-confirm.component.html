@@ -1,7 +1,7 @@
 <div class="booking-confirm">
   <div class="page-header">
     <div>
-      <h2 class="page-title">📋 Xác nhận đặt sân</h2>
+      <h2 class="page-title"><app-icon name="assignment" [size]="22" /> Xác nhận đặt sân</h2>
       <p class="page-subtitle">Kiểm tra thông tin và thanh toán cọc</p>
     </div>
     <button class="btn-outline" (click)="goBack()"><span class="material-symbols-outlined">
@@ -11,7 +11,7 @@
   <div class="confirm-layout">
     <div class="summary-column">
       <div class="summary-card">
-        <div class="card-header"><span class="card-icon">🏸</span>
+        <div class="card-header"><span class="card-icon"><app-icon name="sports_tennis" [size]="22" /></span>
           <h3>Thông tin đặt sân</h3>
         </div>
         <div class="summary-grid">
@@ -30,7 +30,7 @@
         </div>
         @if (state().isBlacklistOverride) {
         <div class="blacklist-banner">
-          <span class="banner-icon">⚠️</span>
+          <span class="banner-icon"><app-icon name="warning" [size]="22" /></span>
           <div>
             <strong>Khách hàng trong danh sách đen</strong>
             <p>{{ state().blacklistReason }}</p>
@@ -48,14 +48,14 @@
       @if (priceCalc()) {
       @let calc = priceCalc()!;
       <div class="price-card">
-        <div class="card-header"><span class="card-icon">💰</span>
+        <div class="card-header"><span class="card-icon"><app-icon name="payments" [size]="22" /></span>
           <h3>Chi tiết giá</h3>
         </div>
         <div class="price-rows">
           <div class="price-row"><span>Phí sân ({{ calc.hours }}h × {{ formatCurrency(calc.pricePerHour)
               }})</span><span>{{ formatCurrency(calc.courtFee) }}</span></div>
           @if (calc.isPeak) {
-          <div class="price-row"><span>Phụ thu giờ cao điểm 🔥</span><span class="text-warning">+{{
+          <div class="price-row"><span>Phụ thu giờ cao điểm <app-icon name="local_fire_department" [size]="18" /></span><span class="text-warning">+{{
               formatCurrency(calc.peakSurcharge) }}</span></div>
           }
           @if (calc.discount > 0) {
@@ -73,23 +73,23 @@
 
     <div class="payment-column">
       <div class="payment-card">
-        <div class="card-header"><span class="card-icon">💳</span>
+        <div class="card-header"><span class="card-icon"><app-icon name="credit_card" [size]="22" /></span>
           <h3>Thanh toán cọc</h3>
         </div>
         <form [formGroup]="paymentForm" (ngSubmit)="onConfirm()">
           <div class="payment-methods">
             <label class="method-option" [class.selected]="paymentForm.controls.paymentMethod.value === 'cash'">
-              <input type="radio" formControlName="paymentMethod" value="cash"><span class="method-icon">💵</span><span
+              <input type="radio" formControlName="paymentMethod" value="cash"><span class="method-icon"><app-icon name="payments" [size]="18" /></span><span
                 class="method-label">Tiền mặt</span>
             </label>
             <label class="method-option"
               [class.selected]="paymentForm.controls.paymentMethod.value === 'bank_transfer'">
               <input type="radio" formControlName="paymentMethod" value="bank_transfer"><span
-                class="method-icon">🏦</span><span class="method-label">Chuyển khoản</span>
+                class="method-icon"><app-icon name="account_balance" [size]="22" /></span><span class="method-label">Chuyển khoản</span>
             </label>
             <label class="method-option" [class.selected]="paymentForm.controls.paymentMethod.value === 'momo_qr'">
               <input type="radio" formControlName="paymentMethod" value="momo_qr"><span
-                class="method-icon">📱</span><span class="method-label">MOMO / QR</span>
+                class="method-icon"><app-icon name="qr_code_2" [size]="22" /></span><span class="method-label">MOMO / QR</span>
             </label>
           </div>
           <div class="deposit-section">
@@ -127,7 +127,7 @@
           }
           <button type="submit" class="btn-confirm" [disabled]="isSubmitting() || !priceCalc()"
             [class.submitting]="isSubmitting()">
-            @if (!isSubmitting()) { <span>✅ Xác nhận đặt sân</span> }
+            @if (!isSubmitting()) { <span><app-icon name="check_circle" [size]="22" /> Xác nhận đặt sân</span> }
             @else { <span class="btn-loading"><span class="spinner"></span> Đang xử lý...</span> }
           </button>
         </form>

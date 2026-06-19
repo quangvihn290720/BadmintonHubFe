@@ -43,7 +43,11 @@
             </svg>
             <input [type]="showPassword() ? 'text' : 'password'" formControlName="password" placeholder="Nhập mật khẩu" autocomplete="current-password">
             <button type="button" class="toggle-password" (click)="showPassword.set(!showPassword())">
-              {{ showPassword() ? '🙈' : '👁️' }}
+              @if (showPassword()) {
+                <app-icon name="visibility_off" [size]="18" />
+              } @else {
+                <app-icon name="visibility" [size]="18" />
+              }
             </button>
           </div>
           @if (showFieldError('password')) {

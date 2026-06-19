@@ -1,7 +1,7 @@
 <div class="page">
   <div class="page-header">
     <div>
-      <h2 class="page-title">💰 Quản lý cấu hình bảng giá</h2>
+      <h2 class="page-title"><app-icon name="payments" [size]="22" /> Quản lý cấu hình bảng giá</h2>
       <p class="page-subtitle">Cấu hình đơn giá giờ thường, giờ cao điểm, phụ thu và tỷ lệ chiết khấu</p>
     </div>
   </div>
@@ -17,7 +17,7 @@
   <div class="pricing-grid" style="display: flex !important; flex-direction: column !important; gap: 32px !important; width: 100% !important;">
     <!-- Standard pricing -->
     <div class="pricing-section" style="width: 100% !important; display: block !important;">
-      <h3 class="section-title">🏸 Cấu hình Sân Standard</h3>
+      <h3 class="section-title"><app-icon name="sports_tennis" [size]="22" /> Cấu hình Sân Standard</h3>
       <div class="table-card">
         <table class="data-table">
           <thead>
@@ -42,13 +42,17 @@
                 <td>{{ rule.peakSurcharge > 0 ? formatCurrency(rule.peakSurcharge) : '-' }}</td>
                 <td>
                   <span class="peak-badge" [class.is-peak]="rule.isPeak">
-                    {{ rule.isPeak ? '🔥 Cao điểm' : 'Thường' }}
+                    @if (rule.isPeak) {
+                      <app-icon name="local_fire_department" [size]="18" /> Cao điểm
+                    } @else {
+                      Thường
+                    }
                   </span>
                 </td>
                 <td>{{ rule.discount > 0 ? rule.discount + '%' : '-' }}</td>
                 @if (isAdmin()) {
                   <td>
-                    <button class="btn-edit" (click)="openEditModal(rule)">✏️ Cấu hình</button>
+                    <button class="btn-edit" (click)="openEditModal(rule)"><app-icon name="edit" [size]="18" /> Cấu hình</button>
                   </td>
                 }
               </tr>
@@ -60,7 +64,7 @@
 
     <!-- VIP pricing -->
     <div class="pricing-section" style="width: 100% !important; display: block !important;">
-      <h3 class="section-title">⭐ Cấu hình Sân VIP</h3>
+      <h3 class="section-title"><app-icon name="star" [size]="18" [filled]="true" /> Cấu hình Sân VIP</h3>
       <div class="table-card">
         <table class="data-table">
           <thead>
@@ -85,13 +89,17 @@
                 <td>{{ rule.peakSurcharge > 0 ? formatCurrency(rule.peakSurcharge) : '-' }}</td>
                 <td>
                   <span class="peak-badge" [class.is-peak]="rule.isPeak">
-                    {{ rule.isPeak ? '🔥 Cao điểm' : 'Thường' }}
+                    @if (rule.isPeak) {
+                      <app-icon name="local_fire_department" [size]="18" /> Cao điểm
+                    } @else {
+                      Thường
+                    }
                   </span>
                 </td>
                 <td>{{ rule.discount > 0 ? rule.discount + '%' : '-' }}</td>
                 @if (isAdmin()) {
                   <td>
-                    <button class="btn-edit" (click)="openEditModal(rule)">✏️ Cấu hình</button>
+                    <button class="btn-edit" (click)="openEditModal(rule)"><app-icon name="edit" [size]="18" /> Cấu hình</button>
                   </td>
                 }
               </tr>
@@ -108,8 +116,8 @@
     <div class="modal-overlay" (click)="showModal.set(false)">
       <div class="modal-card" (click)="$event.stopPropagation()">
         <div class="modal-header">
-          <h3>⚙️ Điều chỉnh bảng giá</h3>
-          <button class="close-btn" (click)="showModal.set(false)">✕</button>
+          <h3><app-icon name="settings" [size]="22" /> Điều chỉnh bảng giá</h3>
+          <button class="close-btn" (click)="showModal.set(false)"><app-icon name="close" [size]="20" /></button>
         </div>
         <form [formGroup]="pricingForm" (ngSubmit)="onSubmit()">
           <div class="modal-body">

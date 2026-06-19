@@ -1,16 +1,17 @@
 <div class="page">
   <div class="page-header">
     <div>
-      <h2 class="page-title">🏟️ Quản lý sân</h2>
+      <h2 class="page-title"><app-icon name="stadium" [size]="22" /> Quản lý sân</h2>
       <p class="page-subtitle">Thêm, sửa và đổi trạng thái sân từ API quản trị backend</p>
     </div>
-    <button class="btn btn-primary" (click)="openAddModal()">➕ Thêm sân</button>
+    <button class="btn btn-primary" (click)="openAddModal()"><app-icon name="add" [size]="18" /> Thêm sân</button>
   </div>
 
   <div class="search-filter-row">
     <div class="search-box-wrapper">
-      <span class="search-icon">🔍</span>
-      <input type="text" class="search-input" placeholder="Tìm theo mã sân, vị trí, trạng thái..." [value]="searchQuery()" (input)="onSearch($event)">
+      <span class="search-icon"><app-icon name="search" [size]="18" /></span>
+      <input type="text" class="search-input" placeholder="Tìm theo mã sân, vị trí, trạng thái..."
+        [value]="searchQuery()" (input)="onSearch($event)">
     </div>
   </div>
 
@@ -29,33 +30,31 @@
     <div class="stadium-container">
       <div class="stadium-row">
         @for (court of courtsRow1(); track court.id) {
-          <div class="stadium-court-wrapper">
-            <div class="mini-court"
-                 [class.status-active]="courtStatus(court) === 'SAN_SONG'"
-                 [class.status-maintenance]="courtStatus(court) === 'BAO_TRI_LUOI'"
-                 (click)="openEditModal(court)">
-              <div class="court-markings">
-                <div class="line-outer"></div>
-                <div class="line-inner"></div>
-                <div class="line-left-short"></div>
-                <div class="line-right-short"></div>
-                <div class="line-left-center"></div>
-                <div class="line-right-center"></div>
-                <div class="court-net-system">
-                  <div class="net-post net-post-top"></div>
-                  <div class="net-mesh-line"></div>
-                  <div class="net-post net-post-bottom"></div>
-                </div>
-              </div>
-              <div class="court-overlay-info">
-                <span class="court-code-label">{{ courtCode(court) }}</span>
-                <span class="court-type-badge" [class.vip]="courtBasePrice(court) > 150000">
-                  {{ courtBasePrice(court) > 150000 ? 'VIP' : 'Std' }}
-                </span>
-                <span class="court-status-text">{{ courtStatusLabel(court) }}</span>
+        <div class="stadium-court-wrapper">
+          <div class="mini-court" [class.status-active]="courtStatus(court) === 'SAN_SONG'"
+            [class.status-maintenance]="courtStatus(court) === 'BAO_TRI_LUOI'" (click)="openEditModal(court)">
+            <div class="court-markings">
+              <div class="line-outer"></div>
+              <div class="line-inner"></div>
+              <div class="line-left-short"></div>
+              <div class="line-right-short"></div>
+              <div class="line-left-center"></div>
+              <div class="line-right-center"></div>
+              <div class="court-net-system">
+                <div class="net-post net-post-top"></div>
+                <div class="net-mesh-line"></div>
+                <div class="net-post net-post-bottom"></div>
               </div>
             </div>
+            <div class="court-overlay-info">
+              <span class="court-code-label">{{ courtCode(court) }}</span>
+              <span class="court-type-badge" [class.vip]="courtBasePrice(court) > 150000">
+                {{ courtBasePrice(court) > 150000 ? 'VIP' : 'Std' }}
+              </span>
+              <span class="court-status-text">{{ courtStatusLabel(court) }}</span>
+            </div>
           </div>
+        </div>
         }
       </div>
 
@@ -67,42 +66,40 @@
 
       <div class="stadium-row">
         @for (court of courtsRow2(); track court.id) {
-          <div class="stadium-court-wrapper">
-            <div class="mini-court"
-                 [class.status-active]="courtStatus(court) === 'SAN_SONG'"
-                 [class.status-maintenance]="courtStatus(court) === 'BAO_TRI_LUOI'"
-                 (click)="openEditModal(court)">
-              <div class="court-markings">
-                <div class="line-outer"></div>
-                <div class="line-inner"></div>
-                <div class="line-left-short"></div>
-                <div class="line-right-short"></div>
-                <div class="line-left-center"></div>
-                <div class="line-right-center"></div>
-                <div class="court-net-system">
-                  <div class="net-post net-post-top"></div>
-                  <div class="net-mesh-line"></div>
-                  <div class="net-post net-post-bottom"></div>
-                </div>
-              </div>
-              <div class="court-overlay-info">
-                <span class="court-code-label">{{ courtCode(court) }}</span>
-                <span class="court-type-badge" [class.vip]="courtBasePrice(court) > 150000">
-                  {{ courtBasePrice(court) > 150000 ? 'VIP' : 'Std' }}
-                </span>
-                <span class="court-status-text">{{ courtStatusLabel(court) }}</span>
+        <div class="stadium-court-wrapper">
+          <div class="mini-court" [class.status-active]="courtStatus(court) === 'SAN_SONG'"
+            [class.status-maintenance]="courtStatus(court) === 'BAO_TRI_LUOI'" (click)="openEditModal(court)">
+            <div class="court-markings">
+              <div class="line-outer"></div>
+              <div class="line-inner"></div>
+              <div class="line-left-short"></div>
+              <div class="line-right-short"></div>
+              <div class="line-left-center"></div>
+              <div class="line-right-center"></div>
+              <div class="court-net-system">
+                <div class="net-post net-post-top"></div>
+                <div class="net-mesh-line"></div>
+                <div class="net-post net-post-bottom"></div>
               </div>
             </div>
+            <div class="court-overlay-info">
+              <span class="court-code-label">{{ courtCode(court) }}</span>
+              <span class="court-type-badge" [class.vip]="courtBasePrice(court) > 150000">
+                {{ courtBasePrice(court) > 150000 ? 'VIP' : 'Std' }}
+              </span>
+              <span class="court-status-text">{{ courtStatusLabel(court) }}</span>
+            </div>
           </div>
+        </div>
         }
       </div>
     </div>
   </div>
 
   @if (error()) {
-    <div class="table-card">
-      <div class="empty-text">{{ error() }}</div>
-    </div>
+  <div class="table-card">
+    <div class="empty-text">{{ error() }}</div>
+  </div>
   }
 
   <div class="table-card">
@@ -118,81 +115,86 @@
       </thead>
       <tbody>
         @for (court of filteredCourts(); track court.id) {
-          <tr>
-            <td><strong>{{ courtCode(court) }}</strong></td>
-            <td>{{ formatCurrency(courtBasePrice(court)) }}</td>
-            <td>{{ courtLocation(court) || '-' }}</td>
-            <td>
-              <span class="status-pill" [class.active]="courtStatus(court) === 'SAN_SONG'" [class.maintenance]="courtStatus(court) === 'BAO_TRI_LUOI'">{{ courtStatusLabel(court) }}</span>
-            </td>
-            <td>
-              <div class="action-buttons">
-                <button type="button" class="btn-icon btn-edit" (click)="openEditModal(court)">✏️ Sửa</button>
-                @if (courtStatus(court) !== 'SAN_SONG') {
-                <button type="button" class="btn-icon btn-open" (click)="changeStatus(court, 'SAN_SONG')">▶️ Mở sân</button>
-                }
-                @if (courtStatus(court) !== 'BAO_TRI_LUOI') {
-                <button type="button" class="btn-icon btn-maintenance" (click)="changeStatus(court, 'BAO_TRI_LUOI')">🔧 Bảo trì</button>
-                }
-              </div>
-            </td>
-          </tr>
+        <tr>
+          <td><strong>{{ courtCode(court) }}</strong></td>
+          <td>{{ formatCurrency(courtBasePrice(court)) }}</td>
+          <td>{{ courtLocation(court) || '-' }}</td>
+          <td>
+            <span class="status-pill" [class.active]="courtStatus(court) === 'SAN_SONG'"
+              [class.maintenance]="courtStatus(court) === 'BAO_TRI_LUOI'">{{ courtStatusLabel(court) }}</span>
+          </td>
+          <td>
+            <div class="action-buttons">
+              <button type="button" class="btn-icon btn-edit" (click)="openEditModal(court)"><app-icon name="edit"
+                  [size]="18" /> Sửa</button>
+              @if (courtStatus(court) !== 'SAN_SONG') {
+              <button type="button" class="btn-icon btn-open" (click)="changeStatus(court, 'SAN_SONG')"><app-icon
+                  name="play_arrow" [size]="18" /> Mở sân</button>
+              }
+              @if (courtStatus(court) !== 'BAO_TRI_LUOI') {
+              <button type="button" class="btn-icon btn-maintenance" (click)="changeStatus(court, 'BAO_TRI_LUOI')">🔧
+                Bảo trì</button>
+              }
+            </div>
+          </td>
+        </tr>
         } @empty {
-          <tr>
-            <td colspan="5" class="empty-text">{{ loading() ? 'Đang tải danh sách sân...' : 'Chưa có sân nào.' }}</td>
-          </tr>
+        <tr>
+          <td colspan="5" class="empty-text">{{ loading() ? 'Đang tải danh sách sân...' : 'Chưa có sân nào.' }}</td>
+        </tr>
         }
       </tbody>
     </table>
   </div>
 
   @if (showModal()) {
-    <div class="modal-overlay" (click)="showModal.set(false)">
-      <div class="modal-card" (click)="$event.stopPropagation()">
-        <div class="modal-header">
-          <h3>{{ isEdit() ? '✏️ Sửa sân' : '➕ Thêm sân mới' }}</h3>
-          <button class="close-btn" (click)="showModal.set(false)">✕</button>
-        </div>
-        <form [formGroup]="courtForm" (ngSubmit)="onSubmit()">
-          <div class="modal-body">
-            <div class="form-group">
-              <label class="form-label">Mã sân <span class="required">*</span></label>
-              <input type="text" formControlName="code" class="form-input" placeholder="COURT-11">
-              @if (showError('code')) { <span class="field-error">Mã sân là bắt buộc</span> }
-            </div>
-            <div class="form-group">
-              <label class="form-label">Giá theo giờ <span class="required">*</span></label>
-              <input type="number" formControlName="basePricePerHour" class="form-input" min="1">
-              @if (showError('basePricePerHour')) { <span class="field-error">Giá phải lớn hơn 0</span> }
-            </div>
-            <div class="form-group">
-              <label class="form-label">Vị trí/ghi chú</label>
-              <input type="text" formControlName="locationNote" class="form-input" placeholder="Zone A">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Trạng thái <span class="required">*</span></label>
-              <select formControlName="status" class="form-input">
-                <option value="SAN_SONG">Sẵn sàng</option>
-                <option value="BAO_TRI_LUOI">Bảo trì lưới</option>
-              </select>
-              @if (showError('status')) { <span class="field-error">Trạng thái là bắt buộc</span> }
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" (click)="showModal.set(false)">Hủy</button>
-            <button type="submit" class="btn btn-primary">💾 Lưu</button>
-          </div>
-        </form>
+  <div class="modal-overlay" (click)="showModal.set(false)">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>
+          @if (isEdit()) {
+          <app-icon name="edit" [size]="18" /> Sửa sân
+          } @else {
+          <app-icon name="add" [size]="18" /> Thêm sân mới
+          }
+        </h3>
+        <button class="close-btn" (click)="showModal.set(false)"><app-icon name="close" [size]="20" /></button>
       </div>
+      <form [formGroup]="courtForm" (ngSubmit)="onSubmit()">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Mã sân <span class="required">*</span></label>
+            <input type="text" formControlName="code" class="form-input" placeholder="COURT-11">
+            @if (showError('code')) { <span class="field-error">Mã sân là bắt buộc</span> }
+          </div>
+          <div class="form-group">
+            <label class="form-label">Giá theo giờ <span class="required">*</span></label>
+            <input type="number" formControlName="basePricePerHour" class="form-input" min="1">
+            @if (showError('basePricePerHour')) { <span class="field-error">Giá phải lớn hơn 0</span> }
+          </div>
+          <div class="form-group">
+            <label class="form-label">Vị trí/ghi chú</label>
+            <input type="text" formControlName="locationNote" class="form-input" placeholder="Zone A">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Trạng thái <span class="required">*</span></label>
+            <select formControlName="status" class="form-input">
+              <option value="SAN_SONG">Sẵn sàng</option>
+              <option value="BAO_TRI_LUOI">Bảo trì lưới</option>
+            </select>
+            @if (showError('status')) { <span class="field-error">Trạng thái là bắt buộc</span> }
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="showModal.set(false)">Hủy</button>
+          <button type="submit" class="btn btn-primary">💾 Lưu</button>
+        </div>
+      </form>
     </div>
+  </div>
   }
 
-  <app-confirm-dialog
-    [visible]="showConfirmDialog()"
-    [title]="confirmDialogTitle()"
-    [message]="confirmDialogMessage()"
-    [type]="confirmDialogType()"
-    [actions]="confirmDialogActions()"
-    (cancel)="showConfirmDialog.set(false)">
+  <app-confirm-dialog [visible]="showConfirmDialog()" [title]="confirmDialogTitle()" [message]="confirmDialogMessage()"
+    [type]="confirmDialogType()" [actions]="confirmDialogActions()" (cancel)="showConfirmDialog.set(false)">
   </app-confirm-dialog>
 </div>

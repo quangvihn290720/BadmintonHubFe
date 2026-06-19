@@ -1,15 +1,17 @@
 <div class="page">
   <div class="page-header">
     <div class="page-header-main">
-      <h2 class="page-title">💳 Thanh toán & Quản lý giao dịch</h2>
+      <h2 class="page-title"><app-icon name="credit_card" [size]="22" /> Thanh toán & Quản lý giao dịch</h2>
       <p class="page-subtitle">Theo dõi hóa đơn theo <strong>ngày chơi sân</strong> — cọc có thể thu trước ngày chơi</p>
     </div>
     <div class="filter-controls-group date-picker-group">
       <label class="control-label">Ngày chơi sân:</label>
       <div class="date-picker">
-        <button type="button" class="nav-day-btn" (click)="adjustDate(-1)">◀</button>
+        <button type="button" class="nav-day-btn" (click)="adjustDate(-1)"><app-icon name="chevron_left"
+            [size]="20" /></button>
         <input type="date" class="date-input" [value]="selectedDate()" (change)="onDateChange($event)">
-        <button type="button" class="nav-day-btn" (click)="adjustDate(1)">▶</button>
+        <button type="button" class="nav-day-btn" (click)="adjustDate(1)"><app-icon name="chevron_right"
+            [size]="20" /></button>
       </div>
     </div>
   </div>
@@ -36,7 +38,7 @@
   <!-- Search & Advanced Filters -->
   <div class="search-filter-row">
     <div class="search-box-wrapper">
-      <span class="search-icon">🔍</span>
+      <span class="search-icon"><app-icon name="search" [size]="18" /></span>
       <input type="text" class="search-input" placeholder="Tìm kiếm theo mã booking, tên khách, sân..."
         [value]="searchQuery()" (input)="onSearch($event)">
     </div>
@@ -95,7 +97,7 @@
         } @empty {
         <tr>
           <td colspan="10" class="empty-text">
-            <span class="empty-icon">📭</span>
+            <span class="empty-icon"><app-icon name="inbox" [size]="28" /></span>
             Không tìm thấy giao dịch thanh toán nào phù hợp.
           </td>
         </tr>
@@ -124,7 +126,7 @@
     <div class="modal-card select-modal" style="max-width: 480px;" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <h3>📄 Chi tiết thanh toán hóa đơn</h3>
-        <button class="close-btn" (click)="showDetailModal.set(false)">✕</button>
+        <button class="close-btn" (click)="showDetailModal.set(false)"><app-icon name="close" [size]="20" /></button>
       </div>
       <div class="modal-body">
         <div class="detail-badge" [class.text-success]="booking.status === 'completed'"
@@ -146,10 +148,10 @@
         <div class="info-sheet" style="margin-top: 8px;">
           <h4 style="margin: 0 0 8px 0; font-size: 13px;">Giao dịch từ backend</h4>
           @for (tx of lichdatTransactions(); track tx.id) {
-            <div class="info-row">
-              <span>{{ tx.type }} / {{ tx.method }}</span>
-              <strong>{{ formatCurrency(tx.amount) }} — {{ tx.status }}</strong>
-            </div>
+          <div class="info-row">
+            <span>{{ tx.type }} / {{ tx.method }}</span>
+            <strong>{{ formatCurrency(tx.amount) }} — {{ tx.status }}</strong>
+          </div>
           }
         </div>
         }

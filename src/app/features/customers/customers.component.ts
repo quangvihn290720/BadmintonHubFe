@@ -1,3 +1,4 @@
+import { AppIconComponent } from '../../shared/components/app-icon/app-icon.component';
 import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { StatusBadgeComponent } from '../../shared/components/status-badge/status-badge.component';
@@ -10,7 +11,7 @@ type CustomerActionType = 'blacklist' | 'activate';
 
 @Component({
   selector: 'app-customers',
-  imports: [StatusBadgeComponent, FormsModule],
+  imports: [AppIconComponent, StatusBadgeComponent, FormsModule],
   templateUrl: './customers.component.html',
   styleUrl: './customers.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -198,7 +199,7 @@ export class CustomersComponent {
   formatDate(dateStr: string): string {
     if (!dateStr) return '';
     const d = new Date(dateStr + 'T00:00:00');
-    return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth()+1).toString().padStart(2, '0')}/${d.getFullYear()}`;
+    return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
   }
 
   getBookingStatusLabel(status: string): string {

@@ -1,24 +1,24 @@
 <div class="page">
   <div class="page-header">
     <div>
-      <h2 class="page-title">📈 Báo cáo & Thống kê doanh thu</h2>
+      <h2 class="page-title"><app-icon name="trending_up" [size]="22" /> Báo cáo & Thống kê doanh thu</h2>
       <p class="page-subtitle">Xem dữ liệu phân tích doanh thu, mật độ sân, và hiệu suất nhân viên</p>
     </div>
     
     <!-- Tab Switches -->
     <div class="tab-switches" style="display: flex; gap: 8px; background: var(--bg-secondary); padding: 4px; border-radius: 10px; border: 1px solid var(--border-color);">
-      <button class="tab-switch-btn" [class.active]="activeTab() === 'stats'" (click)="activeTab.set('stats')" style="padding: 8px 16px; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; transition: all 0.2s;">📊 Thống kê chung</button>
-      <button class="tab-switch-btn" [class.active]="activeTab() === 'transactions'" (click)="activeTab.set('transactions')" style="padding: 8px 16px; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; transition: all 0.2s;">📋 Nhật ký giao dịch</button>
+      <button class="tab-switch-btn" [class.active]="activeTab() === 'stats'" (click)="activeTab.set('stats')" style="padding: 8px 16px; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; transition: all 0.2s;"><app-icon name="analytics" [size]="22" /> Thống kê chung</button>
+      <button class="tab-switch-btn" [class.active]="activeTab() === 'transactions'" (click)="activeTab.set('transactions')" style="padding: 8px 16px; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; transition: all 0.2s;"><app-icon name="assignment" [size]="22" /> Nhật ký giao dịch</button>
     </div>
 
     <!-- Date Select & Export controls -->
     <div class="filter-controls-group" style="display: flex; gap: 12px; align-items: center;">
       <div class="select-group" style="display: flex; align-items: center; background: white; border: 1.5px solid var(--border-color); border-radius: 8px; overflow: hidden; padding: 2px 8px;">
-        <button class="nav-day-btn" (click)="adjustDate(-1)" style="background: none; border: none; padding: 6px 8px; cursor: pointer; color: var(--text-secondary); font-weight: bold;">◀</button>
+        <button class="nav-day-btn" (click)="adjustDate(-1)" style="background: none; border: none; padding: 6px 8px; cursor: pointer; color: var(--text-secondary); font-weight: bold;"><app-icon name="chevron_left" [size]="20" /></button>
         <input type="date" class="form-input" [value]="selectedDate()" (change)="onDateChange($event)" style="border: none; padding: 6px; font-size: 13px; font-family: inherit; font-weight: 600; outline: none; background: transparent; color: var(--text-primary);">
-        <button class="nav-day-btn" (click)="adjustDate(1)" style="background: none; border: none; padding: 6px 8px; cursor: pointer; color: var(--text-secondary); font-weight: bold;">▶</button>
+        <button class="nav-day-btn" (click)="adjustDate(1)" style="background: none; border: none; padding: 6px 8px; cursor: pointer; color: var(--text-secondary); font-weight: bold;"><app-icon name="chevron_right" [size]="20" /></button>
       </div>
-      <button class="btn btn-success" (click)="exportToExcel()" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; background: #16a34a; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; transition: all 0.2s;">📥 Xuất báo cáo</button>
+      <button class="btn btn-success" (click)="exportToExcel()" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; background: #16a34a; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; transition: all 0.2s;"><app-icon name="download" [size]="18" /> Xuất báo cáo</button>
     </div>
   </div>
 
@@ -39,11 +39,11 @@
       @let report = dailyReport();
       @if (report) {
         <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); display: grid; gap: 16px; margin-bottom: 24px;">
-          <app-stat-card icon="💰" label="Doanh thu ròng" [value]="formatCurrency(report.netRevenue)" color="#2563EB"></app-stat-card>
-          <app-stat-card icon="🟢" label="Đặt sân hoàn thành" [value]="report.completedBookingCount.toString()" color="#16A34A"></app-stat-card>
+          <app-stat-card icon="payments" label="Doanh thu ròng" [value]="formatCurrency(report.netRevenue)" color="#2563EB"></app-stat-card>
+          <app-stat-card icon="circle" [filled]="true" label="Đặt sân hoàn thành" [value]="report.completedBookingCount.toString()" color="#16A34A"></app-stat-card>
           <app-stat-card icon="🔴" label="Đặt sân đã hủy" [value]="report.cancelledBookingCount.toString()" color="#DC2626"></app-stat-card>
-          <app-stat-card icon="🥤" label="Doanh thu dịch vụ" [value]="formatCurrency(report.serviceItemRevenue)" color="#F59E0B"></app-stat-card>
-          <app-stat-card icon="🏸" label="Tổng lượt đặt sân" [value]="(report.completedBookingCount + report.cancelledBookingCount).toString()" color="#8B5CF6"></app-stat-card>
+          <app-stat-card icon="local_cafe" label="Doanh thu dịch vụ" [value]="formatCurrency(report.serviceItemRevenue)" color="#F59E0B"></app-stat-card>
+          <app-stat-card icon="sports_tennis" label="Tổng lượt đặt sân" [value]="(report.completedBookingCount + report.cancelledBookingCount).toString()" color="#8B5CF6"></app-stat-card>
         </div>
 
         <div class="report-grid">
@@ -106,7 +106,7 @@
 
           <!-- Advanced Chart 1: Service Revenue Details -->
           <div class="report-card">
-            <h3>🥤 Chi tiết doanh thu dịch vụ phụ trợ</h3>
+            <h3><app-icon name="local_cafe" [size]="22" /> Chi tiết doanh thu dịch vụ phụ trợ</h3>
             <div class="rank-list" style="max-height: 250px; overflow-y: auto;">
               @for (srv of serviceRevenueDetails(); track srv.name) {
                 <div class="rank-item" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed var(--border-color);">
@@ -124,7 +124,7 @@
 
           <!-- Advanced Chart 2: Hourly Booking Density -->
           <div class="report-card">
-            <h3>⏱ Mật độ đặt sân theo khung giờ ngày {{ formatDate(selectedDate()) }}</h3>
+            <h3><app-icon name="schedule" [size]="18" /> Mật độ đặt sân theo khung giờ ngày {{ formatDate(selectedDate()) }}</h3>
             <div class="density-chart-wrapper" style="margin-top: 14px;">
               <div class="density-bar-chart" style="display: flex; gap: 4px; height: 160px; align-items: flex-end; padding-bottom: 24px; border-bottom: 1px solid var(--border-color); overflow-x: auto;">
                 @for (slot of hourlyBookingDensity(); track slot.hour) {
@@ -143,7 +143,7 @@
 
           <!-- Advanced Chart 3: Top Spending Customers -->
           <div class="report-card" style="grid-column: 1 / -1;">
-            <h3>⭐ Khách hàng chi tiêu cao (Top 5 tích lũy)</h3>
+            <h3><app-icon name="star" [size]="18" [filled]="true" /> Khách hàng chi tiêu cao (Top 5 tích lũy)</h3>
             <div class="table-card" style="margin-top: 10px; border-radius: 10px;">
               <table class="data-table" style="min-width: 100%;">
                 <thead>
@@ -219,10 +219,10 @@
 
         <!-- Filter and Search Row for Transaction Logs -->
         <div class="report-card">
-          <h3 style="margin-top: 0; margin-bottom: 16px; font-size: 15px; font-weight: 700;">🔍 Bộ lọc & Tìm kiếm Giao dịch ngày {{ formatDate(selectedDate()) }}</h3>
+          <h3 style="margin-top: 0; margin-bottom: 16px; font-size: 15px; font-weight: 700;"><app-icon name="search" [size]="18" /> Bộ lọc & Tìm kiếm Giao dịch ngày {{ formatDate(selectedDate()) }}</h3>
           <div class="search-filter-row" style="display: flex; justify-content: space-between; gap: 16px; margin-bottom: 16px; flex-wrap: wrap;">
             <div class="search-box-wrapper" style="position: relative; flex: 1; max-width: 380px;">
-              <span class="search-icon" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%);">🔍</span>
+              <span class="search-icon" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%);"><app-icon name="search" [size]="18" /></span>
               <input type="text" class="search-input" placeholder="Tìm theo mã booking, khách hàng, nhân viên..." 
                      [value]="searchQuery()" (input)="searchQuery.set($any($event.target).value)"
                      style="width: 100%; padding: 10px 14px 10px 36px; border: 1.5px solid var(--border-color); border-radius: 8px; font-size: 13px; color: var(--text-primary); outline: none;">
