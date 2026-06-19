@@ -6,15 +6,15 @@
     </div>
     <button class="btn btn-secondary" (click)="reload()" [disabled]="loading()">
       @if (loading()) {
-        <app-icon name="hourglass_top" [size]="28" /> Đang tải...
+      <app-icon name="hourglass_top" [size]="28" /> Đang tải...
       } @else {
-        <app-icon name="refresh" [size]="18" /> Tải lại
+      <app-icon name="refresh" [size]="18" /> Tải lại
       }
     </button>
   </div>
 
   @if (error()) {
-    <div class="error-banner">{{ error() }}</div>
+  <div class="error-banner">{{ error() }}</div>
   }
 
   <div class="stats-row">
@@ -46,7 +46,7 @@
         <select class="select-dropdown" [value]="entityFilter()" (change)="onEntityFilterChange($event)">
           <option value="all">Tất cả</option>
           @for (type of entityTypes(); track type) {
-            <option [value]="type">{{ type }}</option>
+          <option [value]="type">{{ type }}</option>
           }
         </select>
       </div>
@@ -56,10 +56,10 @@
   <div class="audit-layout">
     <div class="table-card" [class.is-loading]="loading()">
       @if (loading()) {
-        <div class="loading-overlay">
-          <span class="loading-spinner"></span>
-          <span>Đang tải nhật ký...</span>
-        </div>
+      <div class="loading-overlay">
+        <span class="loading-spinner"></span>
+        <span>Đang tải nhật ký...</span>
+      </div>
       }
       <table class="data-table">
         <thead>
@@ -72,35 +72,35 @@
         </thead>
         <tbody>
           @for (log of filteredLogs(); track log.id) {
-            <tr>
-              <td class="time-cell">{{ formatDate(log.createdAt) }}</td>
-              <td>
-                <span class="action-badge" [class]="actionBadgeClass(log.action)">
-                  {{ formatAction(log.action) }}
-                </span>
-              </td>
-              <td>
-                <div class="entity-cell">
-                  <span class="entity-type">{{ log.entityType }}</span>
-                  <code class="entity-id">{{ shortId(log.entityId) }}</code>
-                </div>
-              </td>
-              <td>
-                <div class="audit-detail" [title]="log.newValue">{{ log.newValue || '—' }}</div>
-              </td>
-            </tr>
+          <tr>
+            <td class="time-cell">{{ formatDate(log.createdAt) }}</td>
+            <td>
+              <span class="action-badge" [class]="actionBadgeClass(log.action)">
+                {{ formatAction(log.action) }}
+              </span>
+            </td>
+            <td>
+              <div class="entity-cell">
+                <span class="entity-type">{{ log.entityType }}</span>
+                <code class="entity-id">{{ shortId(log.entityId) }}</code>
+              </div>
+            </td>
+            <td>
+              <div class="audit-detail" [title]="log.newValue">{{ log.newValue || '—' }}</div>
+            </td>
+          </tr>
           } @empty {
-            <tr>
-              <td colspan="4" class="empty-text">
-                @if (loading()) {
-                  <span class="empty-icon"><app-icon name="hourglass_top" [size]="28" /></span>
-                  Đang tải dữ liệu...
-                } @else {
-                  <span class="empty-icon"><app-icon name="inbox" [size]="28" /></span>
-                  Không có bản ghi audit nào phù hợp.
-                }
-              </td>
-            </tr>
+          <tr>
+            <td colspan="4" class="empty-text">
+              @if (loading()) {
+              <span class="empty-icon"><app-icon name="hourglass_top" [size]="28" /></span>
+              Đang tải dữ liệu...
+              } @else {
+              <span class="empty-icon"><app-icon name="inbox" [size]="28" /></span>
+              Không có bản ghi audit nào phù hợp.
+              }
+            </td>
+          </tr>
           }
         </tbody>
       </table>

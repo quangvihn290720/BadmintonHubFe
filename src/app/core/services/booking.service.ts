@@ -56,6 +56,22 @@ export class BookingService {
   private nextId = 1;
   private readonly backendIds = new Map<number, string>();
 
+  // Per-booking pending services: stores services added during a playing session
+  // so they survive closing/reopening the checkout modal
+  private readonly pendingServicesMap = new Map<number, { key: string; name: string; price: number; quantity: number }[]>();
+
+  savePendingServices(bookingId: number, services: { key: string; name: string; price: number; quantity: number }[]): void {
+    this.pendingServicesMap.set(bookingId, services.filter(s => (s.quantity || 0) > 0));
+  }
+
+  loadPendingServices(bookingId: number): { key: string; name: string; price: number; quantity: number }[] | null {
+    return this.pendingServicesMap.get(bookingId) || null;
+  }
+
+  clearPendingServices(bookingId: number): void {
+    this.pendingServicesMap.delete(bookingId);
+  }
+
   constructor() {
     this.fetchBookings();
   }

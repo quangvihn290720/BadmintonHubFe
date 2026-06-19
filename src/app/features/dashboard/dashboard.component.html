@@ -1,16 +1,17 @@
 <div class="dashboard">
   <!-- Toast Notification -->
   @if (toastMessage()) {
-    <div class="toast-notification" [class.toast-error]="toastType() === 'error'" [class.toast-success]="toastType() === 'success'">
-      <span class="toast-icon">
-        @if (toastType() === 'success') {
-          <app-icon name="check_circle" [size]="22" />
-        } @else {
-          <app-icon name="cancel" [size]="22" />
-        }
-      </span>
-      <span class="toast-text">{{ toastMessage() }}</span>
-    </div>
+  <div class="toast-notification" [class.toast-error]="toastType() === 'error'"
+    [class.toast-success]="toastType() === 'success'">
+    <span class="toast-icon">
+      @if (toastType() === 'success') {
+      <app-icon name="check_circle" [size]="22" />
+      } @else {
+      <app-icon name="cancel" [size]="22" />
+      }
+    </span>
+    <span class="toast-text">{{ toastMessage() }}</span>
+  </div>
   }
 
   <!-- Page Header -->
@@ -39,7 +40,8 @@
       color="#16A34A"></app-stat-card>
     <app-stat-card icon="assignment" label="Đặt sân chờ Check-in" [value]="stats().deposited.toString()"
       color="#2563EB"></app-stat-card>
-    <app-stat-card icon="sports_tennis" label="Sân đang chơi" [value]="stats().playing.toString()" color="#F59E0B"></app-stat-card>
+    <app-stat-card icon="sports_tennis" label="Sân đang chơi" [value]="stats().playing.toString()"
+      color="#F59E0B"></app-stat-card>
     <app-stat-card icon="payments" label="Thu nhập hôm nay" [value]="formatCurrency(stats().revenue)"
       color="#8B5CF6"></app-stat-card>
   </div>
@@ -64,13 +66,11 @@
         <button class="today-btn" (click)="jumpToToday()">Hôm nay</button>
         <div class="date-chips-scroll">
           @for (tab of dateTabs(); track tab.dateStr) {
-            <div class="date-chip" 
-                 [class.active]="selectedDate() === tab.dateStr"
-                 [class.is-today]="tab.isToday"
-                 (click)="selectQuickDate(tab.dateStr)">
-              <span class="chip-day-label">{{ tab.dayLabel }}</span>
-              <span class="chip-day-num">{{ tab.dayNum }}/{{ tab.monthNum }}</span>
-            </div>
+          <div class="date-chip" [class.active]="selectedDate() === tab.dateStr" [class.is-today]="tab.isToday"
+            (click)="selectQuickDate(tab.dateStr)">
+            <span class="chip-day-label">{{ tab.dayLabel }}</span>
+            <span class="chip-day-num">{{ tab.dayNum }}/{{ tab.monthNum }}</span>
+          </div>
           }
         </div>
         <button class="nav-week-btn" (click)="nextWeek()"><app-icon name="chevron_right" [size]="20" /></button>
@@ -99,9 +99,9 @@
               <span class="court-name">{{ court.name }}</span>
               <span class="court-type" [class.vip-type]="court.type === 'vip'">
                 @if (court.type === 'vip') {
-                  <app-icon name="star" [size]="18" [filled]="true" /> VIP
+                <app-icon name="star" [size]="18" [filled]="true" /> VIP
                 } @else {
-                  Standard
+                Standard
                 }
               </span>
             </div>
@@ -123,11 +123,9 @@
 
               <!-- Background grid lines (interactive hour cells) -->
               @for (hour of hourLabels; track hour) {
-              <div class="grid-hour-cell" 
-                   [class.cell-past]="isPastHour(hour)" 
-                   [style.height.px]="hourHeight"
-                   [title]="isPastHour(hour) ? 'Khung giờ đã qua' : 'Sân trống - Bấm để tạo lịch đặt lúc ' + hour"
-                   (click)="onGridCellClick(court, hour)">
+              <div class="grid-hour-cell" [class.cell-past]="isPastHour(hour)" [style.height.px]="hourHeight"
+                [title]="isPastHour(hour) ? 'Khung giờ đã qua' : 'Sân trống - Bấm để tạo lịch đặt lúc ' + hour"
+                (click)="onGridCellClick(court, hour)">
                 @if (!isPastHour(hour)) {
                 <span class="cell-hover-action">+ Đặt sân {{ hour }}</span>
                 }
@@ -139,15 +137,21 @@
               <div class="booking-card" [class.card-deposited]="booking.status === 'deposited'"
                 [class.card-playing]="booking.status === 'playing'"
                 [class.card-completed]="booking.status === 'completed'" [style.top.px]="getBookingTop(booking)"
-                [style.height.px]="getBookingHeight(booking)" 
+                [style.height.px]="getBookingHeight(booking)"
                 [title]="booking.customerName + ' (' + booking.customerPhone + ') \nLịch: ' + booking.startTime + ' - ' + booking.endTime + ' \nTrạng thái: ' + bookingService.getStatusLabel(booking.status)"
                 (click)="onBookingCardClick(booking, $event)">
                 <div class="booking-card-content">
                   <span class="booking-cust-name">{{ booking.customerName }}</span>
-                  <span class="booking-cust-time"><app-icon name="schedule" [size]="14" /> {{ booking.startTime }} - {{ booking.endTime }}</span>
-                  <span class="booking-cust-phone">📞 {{ booking.customerPhone }}</span>
+                  <span class="booking-cust-time"><app-icon name="schedule" [size]="14" /> {{ booking.startTime }} - {{
+                    booking.endTime }}</span>
+                  <span class="booking-cust-phone"><app-icon name="phone" [size]="10" /> {{ booking.customerPhone }}</span>
                   @if (booking.note) {
-                  <span class="booking-cust-note" [title]="booking.note">📝 {{ booking.note }}</span>
+                  <span class="booking-cust-note" [title]="booking.note"><app-icon name="edit_note" [size]="10" /> {{ booking.note }}</span>
+                  }
+                  @if (booking.status === 'playing' && hasPendingServices(booking.id)) {
+                  <span class="booking-services-badge" title="Đã ghi dịch vụ">
+                    <app-icon name="local_cafe" [size]="10" /> {{ getPendingServicesCount(booking.id) }} dịch vụ
+                  </span>
                   }
                 </div>
               </div>
@@ -176,8 +180,10 @@
           <div class="info-row"><span>Khách hàng:</span><strong>{{ booking.customerName }}</strong></div>
           <div class="info-row"><span>Số điện thoại:</span><strong>{{ booking.customerPhone }}</strong></div>
           <div class="info-row"><span>Sân đặt:</span><strong>{{ booking.courtName }}</strong></div>
-          <div class="info-row"><span>Thời gian đăng ký:</span><strong>{{ booking.startTime }} - {{ booking.endTime }}</strong></div>
-          <div class="info-row"><span>Tiền cọc đã đóng:</span><strong class="text-success">{{ formatCurrency(booking.deposit) }}</strong></div>
+          <div class="info-row"><span>Thời gian đăng ký:</span><strong>{{ booking.startTime }} - {{ booking.endTime
+              }}</strong></div>
+          <div class="info-row"><span>Tiền cọc đã đóng:</span><strong class="text-success">{{
+              formatCurrency(booking.deposit) }}</strong></div>
         </div>
 
         @if (!canCheckIn(booking)) {
@@ -186,7 +192,8 @@
           <p>Chỉ cho phép check-in vào đúng ngày đặt sân và trước giờ chơi tối đa 15 phút.</p>
         </div>
         } @else {
-        <p class="modal-desc">Khách hàng đã đến đúng giờ. Xác nhận chuyển trạng thái sang <strong>Đang chơi</strong>?</p>
+        <p class="modal-desc">Khách hàng đã đến đúng giờ. Xác nhận chuyển trạng thái sang <strong>Đang chơi</strong>?
+        </p>
         }
 
         <button type="button" class="checkin-primary-btn" [disabled]="!canCheckIn(booking)" (click)="confirmCheckIn()">
@@ -204,7 +211,8 @@
               <span class="manage-btn-icon"><app-icon name="calendar_month" [size]="22" /></span>
               <span class="manage-btn-label">Đổi lịch chơi</span>
             </button>
-            <button type="button" class="checkin-manage-btn checkin-manage-danger" (click)="confirmCancelBooking(booking.id)">
+            <button type="button" class="checkin-manage-btn checkin-manage-danger"
+              (click)="confirmCancelBooking(booking.id)">
               <span class="manage-btn-icon"><app-icon name="delete" [size]="18" /></span>
               <span class="manage-btn-label">Hủy lịch đặt</span>
             </button>
@@ -265,29 +273,33 @@
           <!-- Right: Selected Services Summary Card & Trigger Button -->
           <div class="checkout-panel">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-              <h4 class="panel-section-title" style="margin-bottom: 0;"><app-icon name="local_cafe" [size]="22" /> Dịch vụ phụ trợ đã chọn</h4>
-              <button class="btn btn-secondary btn-sm" type="button" (click)="showServicePopup.set(true)" style="padding: 6px 12px; font-size: 12px; height: auto;">
+              <h4 class="panel-section-title" style="margin-bottom: 0;"><app-icon name="local_cafe" [size]="22" /> Dịch
+                vụ phụ trợ đã chọn</h4>
+              <button class="btn btn-secondary btn-sm" type="button" (click)="showServicePopup.set(true)"
+                style="padding: 6px 12px; font-size: 12px; height: auto;">
                 <app-icon name="add" [size]="18" /> Thêm / Sửa dịch vụ
               </button>
             </div>
-            
+
             <div class="services-list" style="max-height: 200px; overflow-y: auto;">
               @if (selectedServices().length === 0) {
-                <div style="text-align: center; color: #94a3b8; padding: 24px 0; font-size: 13px; background: rgba(30, 41, 59, 0.5); border-radius: 10px; border: 1px dashed #334155;">
-                  Chưa chọn dịch vụ nào cho khách chơi.
-                </div>
+              <div
+                style="text-align: center; color: #94a3b8; padding: 24px 0; font-size: 13px; background: rgba(30, 41, 59, 0.5); border-radius: 10px; border: 1px dashed #334155;">
+                Chưa chọn dịch vụ nào cho khách chơi.
+              </div>
               } @else {
-                @for (item of selectedServices(); track item.id) {
-                  <div class="service-item-row" style="padding: 8px 12px; background: rgba(30, 41, 59, 0.4); border-radius: 8px; margin-bottom: 6px; border: 1px solid #334155;">
-                    <div class="service-label">
-                      <span class="item-name">{{ item.name }}</span>
-                      <span class="item-price">{{ formatCurrency(item.price) }} x {{ item.quantity }}</span>
-                    </div>
-                    <div style="font-weight: 700; color: var(--color-warning);">
-                      {{ formatCurrency(item.price * (item.quantity || 0)) }}
-                    </div>
-                  </div>
-                }
+              @for (item of selectedServices(); track item.id) {
+              <div class="service-item-row"
+                style="padding: 8px 12px; background: rgba(30, 41, 59, 0.4); border-radius: 8px; margin-bottom: 6px; border: 1px solid #334155;">
+                <div class="service-label">
+                  <span class="item-name">{{ item.name }}</span>
+                  <span class="item-price">{{ formatCurrency(item.price) }} x {{ item.quantity }}</span>
+                </div>
+                <div style="font-weight: 700; color: var(--color-warning);">
+                  {{ formatCurrency(item.price * (item.quantity || 0)) }}
+                </div>
+              </div>
+              }
               }
             </div>
           </div>
@@ -307,7 +319,8 @@
                 formatCurrency(servicesTotal()) }}</span></div>
             }
             @if (appliedDiscount() > 0) {
-            <div class="bill-row text-success"><span>Giảm giá khuyến mãi:</span><span>-{{ formatCurrency(appliedDiscount()) }}</span></div>
+            <div class="bill-row text-success"><span>Giảm giá khuyến mãi:</span><span>-{{
+                formatCurrency(appliedDiscount()) }}</span></div>
             }
             <div class="bill-row bill-grand-total"><span>TỔNG CỘNG:</span><span>{{ formatCurrency(totalBill()) }}</span>
             </div>
@@ -323,8 +336,8 @@
         <div class="payment-methods-sec" style="margin-bottom: 16px;">
           <label class="form-label">Mã khuyến mãi:</label>
           <div style="display: flex; gap: 8px;">
-            <input type="text" class="form-input" style="flex: 1;" placeholder="VD: DEV10"
-              [value]="promotionCode()" (input)="promotionCode.set($any($event.target).value)">
+            <input type="text" class="form-input" style="flex: 1;" placeholder="VD: DEV10" [value]="promotionCode()"
+              (input)="promotionCode.set($any($event.target).value)">
             <button type="button" class="btn btn-secondary" (click)="applyPromotionCode()">Áp dụng</button>
           </div>
         </div>
@@ -351,7 +364,8 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" (click)="showCheckoutModal.set(false)">Đóng</button>
-        <button class="btn btn-success checkout-btn" (click)="confirmCheckout()"><app-icon name="credit_card" [size]="22" /> Hoàn tất thanh toán & Trả
+        <button class="btn btn-success checkout-btn" (click)="confirmCheckout()"><app-icon name="credit_card"
+            [size]="22" /> Hoàn tất thanh toán & Trả
           sân</button>
       </div>
     </div>
@@ -364,11 +378,12 @@
   <div class="modal-overlay" (click)="showDetailModal.set(false)">
     <div class="modal-card select-modal" (click)="$event.stopPropagation()">
       <div class="modal-header">
-        <h3>📄 Chi tiết lịch sử phiên chơi</h3>
+        <h3><app-icon name="description" [size]="18" /> Chi tiết lịch sử phiên chơi</h3>
         <button class="close-btn" (click)="showDetailModal.set(false)"><app-icon name="close" [size]="20" /></button>
       </div>
       <div class="modal-body">
-        <div class="detail-badge text-success"><app-icon name="check" [size]="18" /> Hoàn thành · Mã: {{ booking.code }}</div>
+        <div class="detail-badge text-success"><app-icon name="check" [size]="18" /> Hoàn thành · Mã: {{ booking.code }}
+        </div>
 
         <div class="info-sheet" style="margin-top: 8px;">
           <div class="info-row"><span>Khách hàng:</span><strong>{{ booking.customerName }}</strong></div>
@@ -380,7 +395,8 @@
         </div>
 
         <div class="bill-tally-card" style="background: #1e293b; margin-top: 8px;">
-          <h4 class="bill-title" style="color: #cbd5e1; border-bottom: 1px dashed #475569;"><app-icon name="receipt_long" [size]="22" /> CHI TIẾT THANH TOÁN</h4>
+          <h4 class="bill-title" style="color: #cbd5e1; border-bottom: 1px dashed #475569;"><app-icon
+              name="receipt_long" [size]="22" /> CHI TIẾT THANH TOÁN</h4>
           <div class="bill-rows">
             <div class="bill-row"><span>Tiền sân gốc:</span><span>{{ formatCurrency(booking.totalAmount) }}</span></div>
 
@@ -439,32 +455,40 @@
 
   <!-- Service Selection Popup Modal -->
   @if (showServicePopup() && activeBooking()) {
-  <div class="modal-overlay" style="z-index: 1100;" (click)="showServicePopup.set(false)">
+  <div class="modal-overlay" style="z-index: 1100;" (click)="onServicePopupClose()">
     <div class="modal-card select-modal" (click)="$event.stopPropagation()" style="max-width: 500px;">
       <div class="modal-header">
         <h3><app-icon name="local_cafe" [size]="22" /> Chọn dịch vụ phụ trợ</h3>
-        <button class="close-btn" (click)="showServicePopup.set(false)"><app-icon name="close" [size]="20" /></button>
+        <button class="close-btn" (click)="onServicePopupClose()"><app-icon name="close" [size]="20" /></button>
       </div>
       <div class="modal-body" style="max-height: 400px; overflow-y: auto;">
-        <p style="font-size: 13px; color: #94a3b8; margin-bottom: 16px;">Tăng giảm số lượng dịch vụ phụ trội khách đã dùng tại sân:</p>
+        <p style="font-size: 13px; color: #94a3b8; margin-bottom: 16px;">Tăng giảm số lượng dịch vụ phụ trội khách đã
+          dùng tại sân:</p>
         <div class="services-list">
           @for (item of serviceItems(); track item.key) {
-          <div class="service-item-row" style="padding: 12px; background: var(--bg-secondary); border-radius: 10px; border: 1px solid var(--border-color); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+          <div class="service-item-row"
+            style="padding: 12px; background: var(--bg-secondary); border-radius: 10px; border: 1px solid var(--border-color); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
             <div class="service-label" style="display: flex; flex-direction: column; gap: 4px;">
               <span class="item-name" style="font-weight: 600; color: var(--text-primary);">{{ item.name }}</span>
-              <span class="item-price" style="font-size: 12.5px; color: var(--text-secondary); font-weight: 500;">{{ formatCurrency(item.price) }}</span>
+              <span class="item-price" style="font-size: 12.5px; color: var(--text-secondary); font-weight: 500;">{{
+                formatCurrency(item.price) }}</span>
             </div>
             <div class="quantity-selector" style="display: flex; align-items: center; gap: 8px;">
-              <button class="qty-btn" type="button" (click)="adjustServiceQty(item.key || '', -1)" style="width: 32px; height: 32px; border-radius: 6px; background: white; border: 1px solid var(--border-color); color: var(--text-primary); font-weight: bold; cursor: pointer; transition: all 0.15s;">-</button>
-              <span class="qty-val" style="width: 24px; text-align: center; font-weight: 700; color: var(--text-primary);">{{ item.quantity || 0 }}</span>
-              <button class="qty-btn" type="button" (click)="adjustServiceQty(item.key || '', 1)" style="width: 32px; height: 32px; border-radius: 6px; background: white; border: 1px solid var(--border-color); color: var(--text-primary); font-weight: bold; cursor: pointer; transition: all 0.15s;">+</button>
+              <button class="qty-btn" type="button" (click)="adjustServiceQty(item.key || '', -1)"
+                style="width: 32px; height: 32px; border-radius: 6px; background: white; border: 1px solid var(--border-color); color: var(--text-primary); font-weight: bold; cursor: pointer; transition: all 0.15s;">-</button>
+              <span class="qty-val"
+                style="width: 24px; text-align: center; font-weight: 700; color: var(--text-primary);">{{ item.quantity
+                || 0 }}</span>
+              <button class="qty-btn" type="button" (click)="adjustServiceQty(item.key || '', 1)"
+                style="width: 32px; height: 32px; border-radius: 6px; background: white; border: 1px solid var(--border-color); color: var(--text-primary); font-weight: bold; cursor: pointer; transition: all 0.15s;">+</button>
             </div>
           </div>
           }
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-primary" style="width: 100%;" (click)="showServicePopup.set(false)">Áp dụng dịch vụ</button>
+        <button class="btn btn-primary" style="width: 100%;" (click)="onServicePopupClose()">Áp dụng dịch
+          vụ</button>
       </div>
     </div>
   </div>
@@ -477,25 +501,26 @@
     <div class="modal-card select-modal" (click)="$event.stopPropagation()" style="max-width: 500px;">
       <div class="modal-header">
         <h3><app-icon name="calendar_month" [size]="22" /> Đổi lịch đặt sân</h3>
-        <button class="close-btn" (click)="showRescheduleModal.set(false)"><app-icon name="close" [size]="20" /></button>
+        <button class="close-btn" (click)="showRescheduleModal.set(false)"><app-icon name="close"
+            [size]="20" /></button>
       </div>
       <div class="modal-body">
         <div class="detail-badge" style="margin-bottom: 16px;">Mã đặt sân: {{ booking.code }}</div>
-        
+
         <div style="display: flex; flex-direction: column; gap: 12px;">
           <!-- Court Selector -->
           <div class="reschedule-form-group">
             <label class="reschedule-label">Chọn sân chơi:</label>
             <select (change)="rescheduleCourtId.set(+($any($event.target).value))" class="reschedule-select">
               @for (court of courts(); track court.id) {
-                <option [value]="court.id" [selected]="court.id === rescheduleCourtId()">
-                  {{ court.name }} (
-                  @if (court.type === 'vip') {
-                    <app-icon name="star" [size]="18" [filled]="true" /> VIP
-                  } @else {
-                    Standard
-                  })
-                </option>
+              <option [value]="court.id" [selected]="court.id === rescheduleCourtId()">
+                {{ court.name }} (
+                @if (court.type === 'vip') {
+                <app-icon name="star" [size]="18" [filled]="true" /> VIP
+                } @else {
+                Standard
+                })
+              </option>
               }
             </select>
           </div>
@@ -503,8 +528,8 @@
           <!-- Date Selector -->
           <div class="reschedule-form-group">
             <label class="reschedule-label">Chọn ngày chơi:</label>
-            <input type="date" [value]="rescheduleDate()" (input)="rescheduleDate.set($any($event.target).value)" 
-                   class="reschedule-input">
+            <input type="date" [value]="rescheduleDate()" (input)="rescheduleDate.set($any($event.target).value)"
+              class="reschedule-input">
           </div>
 
           <!-- Time slot selectors -->
@@ -513,16 +538,16 @@
               <label class="reschedule-label">Giờ bắt đầu:</label>
               <select (change)="rescheduleStart.set($any($event.target).value)" class="reschedule-select">
                 @for (hour of rescheduleHours; track hour) {
-                  <option [value]="hour" [selected]="hour === rescheduleStart()">{{ hour }}</option>
+                <option [value]="hour" [selected]="hour === rescheduleStart()">{{ hour }}</option>
                 }
               </select>
             </div>
-            
+
             <div style="flex: 1;" class="reschedule-form-group">
               <label class="reschedule-label">Giờ kết thúc:</label>
               <select (change)="rescheduleEnd.set($any($event.target).value)" class="reschedule-select">
                 @for (hour of rescheduleHours; track hour) {
-                  <option [value]="hour" [selected]="hour === rescheduleEnd()">{{ hour }}</option>
+                <option [value]="hour" [selected]="hour === rescheduleEnd()">{{ hour }}</option>
                 }
               </select>
             </div>
@@ -531,7 +556,7 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" (click)="showRescheduleModal.set(false)">Hủy</button>
-        <button class="btn btn-primary" (click)="confirmReschedule()">💾 Xác nhận đổi lịch</button>
+        <button class="btn btn-primary" (click)="confirmReschedule()"><app-icon name="save" [size]="18" /> Xác nhận đổi lịch</button>
       </div>
     </div>
   </div>
@@ -542,27 +567,36 @@
   @let booking = activeBooking()!;
   <div class="modal-overlay" style="z-index: 1200;" (click)="showCancelConfirmModal.set(false)">
     <div class="modal-card select-modal" (click)="$event.stopPropagation()" style="max-width: 440px;">
-      <div class="modal-header" style="background: rgba(220, 38, 38, 0.05); border-bottom-color: rgba(220, 38, 38, 0.1);">
-        <h3 style="color: var(--color-error); display: flex; align-items: center; gap: 8px;"><app-icon name="delete" [size]="18" /> Xác nhận hủy lịch chơi</h3>
-        <button class="close-btn" (click)="showCancelConfirmModal.set(false)"><app-icon name="close" [size]="20" /></button>
+      <div class="modal-header"
+        style="background: rgba(220, 38, 38, 0.05); border-bottom-color: rgba(220, 38, 38, 0.1);">
+        <h3 style="color: var(--color-error); display: flex; align-items: center; gap: 8px;"><app-icon name="delete"
+            [size]="18" /> Xác nhận hủy lịch chơi</h3>
+        <button class="close-btn" (click)="showCancelConfirmModal.set(false)"><app-icon name="close"
+            [size]="20" /></button>
       </div>
       <div class="modal-body" style="padding: 20px; gap: 14px;">
-        <div class="detail-badge" style="background: rgba(220, 38, 38, 0.08); color: var(--color-error); border: 1px solid rgba(220, 38, 38, 0.15);">
+        <div class="detail-badge"
+          style="background: rgba(220, 38, 38, 0.08); color: var(--color-error); border: 1px solid rgba(220, 38, 38, 0.15);">
           Mã lịch đặt: {{ booking.code }}
         </div>
-        
+
         <p style="font-size: 14px; line-height: 1.5; color: var(--text-primary); margin: 0;">
-          Bạn đang yêu cầu hủy lịch chơi của khách hàng **{{ booking.customerName }}** vào ngày **{{ booking.date }}** lúc **{{ booking.startTime }} - {{ booking.endTime }}**.
+          Bạn đang yêu cầu hủy lịch chơi của khách hàng **{{ booking.customerName }}** vào ngày **{{ booking.date }}**
+          lúc **{{ booking.startTime }} - {{ booking.endTime }}**.
         </p>
 
         <label class="form-label">Số tiền hoàn trả (nếu có):</label>
-        <input type="number" class="form-input" min="0" [max]="booking.deposit"
-          [value]="cancelRefundAmount()" (input)="cancelRefundAmount.set(+$any($event.target).value)">
-        <p style="font-size: 12px; color: var(--text-secondary); margin: 0;">Tiền cọc hiện tại: {{ formatCurrency(booking.deposit) }}</p>
+        <input type="number" class="form-input" min="0" [max]="booking.deposit" [value]="cancelRefundAmount()"
+          (input)="cancelRefundAmount.set(+$any($event.target).value)">
+        <p style="font-size: 12px; color: var(--text-secondary); margin: 0;">Tiền cọc hiện tại: {{
+          formatCurrency(booking.deposit) }}</p>
       </div>
-      <div class="modal-footer" style="padding: 14px 20px; background: var(--bg-secondary); border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 10px;">
+      <div class="modal-footer"
+        style="padding: 14px 20px; background: var(--bg-secondary); border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 10px;">
         <button class="btn btn-secondary" (click)="showCancelConfirmModal.set(false)">Quay lại</button>
-        <button class="btn btn-primary" style="background: var(--color-error); color: white;" (click)="executeCancelBooking()"><app-icon name="local_fire_department" [size]="18" /> Xác nhận hủy lịch</button>
+        <button class="btn btn-primary" style="background: var(--color-error); color: white;"
+          (click)="executeCancelBooking()"><app-icon name="local_fire_department" [size]="18" /> Xác nhận hủy
+          lịch</button>
       </div>
     </div>
   </div>

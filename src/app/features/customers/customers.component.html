@@ -1,6 +1,6 @@
 <div class="page">
   @if (actionMessage()) {
-    <div class="action-banner">{{ actionMessage() }}</div>
+  <div class="action-banner">{{ actionMessage() }}</div>
   }
 
   <div class="page-header">
@@ -10,7 +10,8 @@
       </p>
     </div>
     <div class="tab-group">
-      <button class="tab" [class.active]="activeTab() === 'regular'" (click)="onTabChange('regular')">Thành viên thường ({{
+      <button class="tab" [class.active]="activeTab() === 'regular'" (click)="onTabChange('regular')">Thành viên thường
+        ({{
         regularCustomers().length }})</button>
       <button class="tab" [class.active]="activeTab() === 'blacklist'" (click)="onTabChange('blacklist')">Danh sách đen
         ({{ blacklistCustomers().length }})</button>
@@ -104,15 +105,17 @@
   <!-- Customer Details Modal -->
   @if (showDetailsModal() && selectedCustomer(); as cust) {
   <div class="modal-overlay" (click)="onModalOverlayClick()">
-    <div class="modal-card customer-modal-card" [class.confirm-mode]="pendingAction()" (click)="$event.stopPropagation()">
-      <div class="modal-header" [class.header-warning]="pendingAction() === 'blacklist'" [class.header-success]="pendingAction() === 'activate'">
+    <div class="modal-card customer-modal-card" [class.confirm-mode]="pendingAction()"
+      (click)="$event.stopPropagation()">
+      <div class="modal-header" [class.header-warning]="pendingAction() === 'blacklist'"
+        [class.header-success]="pendingAction() === 'activate'">
         <h3>
           @if (pendingAction() === 'blacklist') {
-            <app-icon name="warning" [size]="22" /> Xác nhận blacklist
+          <app-icon name="warning" [size]="22" /> Xác nhận blacklist
           } @else if (pendingAction() === 'activate') {
-            <app-icon name="check_circle" [size]="22" /> Kích hoạt lại khách hàng
+          <app-icon name="check_circle" [size]="22" /> Kích hoạt lại khách hàng
           } @else {
-            <app-icon name="person" [size]="18" /> Chi tiết thông tin khách hàng
+          <app-icon name="person" [size]="18" /> Chi tiết thông tin khách hàng
           }
         </h3>
         <button class="close-btn" (click)="closeDetailsModal()"><app-icon name="close" [size]="20" /></button>
@@ -124,7 +127,7 @@
           <div class="avatar-circle">{{ cust.name.charAt(0) }}</div>
           <div class="profile-meta">
             <h4>{{ cust.name }}</h4>
-            <p class="phone-num">📞 {{ cust.phone }}</p>
+            <p class="phone-num"><app-icon name="phone" [size]="14" /> {{ cust.phone }}</p>
           </div>
         </div>
 
@@ -159,14 +162,14 @@
         </button>
         @if (pendingAction() === 'blacklist') {
         <button type="button" class="btn btn-danger" [disabled]="actionSubmitting()" (click)="confirmAction()">
-          {{ actionSubmitting() ? 'Đang xử lý...' : '🚫 Xác nhận Blacklist' }}
+          {{ actionSubmitting() ? 'Đang xử lý...' : 'Xác nhận Blacklist' }}
         </button>
         } @else {
         <button type="button" class="btn btn-primary" [disabled]="actionSubmitting()" (click)="confirmAction()">
           @if (actionSubmitting()) {
-            Đang xử lý...
+          Đang xử lý...
           } @else {
-            <app-icon name="check_circle" [size]="22" /> Xác nhận kích hoạt
+          <app-icon name="check_circle" [size]="22" /> Xác nhận kích hoạt
           }
         </button>
         }
@@ -187,7 +190,7 @@
                 <app-icon name="star" [size]="18" [filled]="true" /> {{ getVipTier(cust.points) }}
               </span>
             </h4>
-            <p class="phone-num">📞 {{ cust.phone }}</p>
+            <p class="phone-num"><app-icon name="phone" [size]="14" /> {{ cust.phone }}</p>
             <p class="email-text"><app-icon name="mail" [size]="18" /> {{ cust.email }}</p>
           </div>
         </div>
@@ -215,7 +218,8 @@
 
         @if (cust.isBlacklisted) {
         <div class="blacklist-warning-alert">
-          <strong><app-icon name="warning" [size]="22" /> Cảnh báo Blacklist:</strong> {{ cust.blacklistReason || 'Không có lý do chi tiết' }}
+          <strong><app-icon name="warning" [size]="22" /> Cảnh báo Blacklist:</strong> {{ cust.blacklistReason || 'Không
+          có lý do chi tiết' }}
         </div>
         }
 
@@ -239,10 +243,12 @@
                 </span>
               </div>
               <div class="item-details">
-                <p><app-icon name="stadium" [size]="22" /> <strong>{{ b.courtName }}</strong> · <app-icon name="schedule" [size]="18" /> {{ b.startTime }} - {{ b.endTime }} · <app-icon name="calendar_month" [size]="22" /> {{
+                <p><app-icon name="stadium" [size]="22" /> <strong>{{ b.courtName }}</strong> · <app-icon
+                    name="schedule" [size]="18" /> {{ b.startTime }} - {{ b.endTime }} · <app-icon name="calendar_month"
+                    [size]="22" /> {{
                   formatDate(b.date) }}</p>
                 @if (b.note) {
-                <p class="item-note">📝 <em>Ghi chú: {{ b.note }}</em></p>
+                <p class="item-note"><app-icon name="edit_note" [size]="14" /> <em>Ghi chú: {{ b.note }}</em></p>
                 }
               </div>
               <div class="item-financials">
@@ -270,9 +276,10 @@
       </div>
       <div class="modal-footer">
         @if (!cust.isBlacklisted) {
-          <button type="button" class="btn btn-outline-danger" (click)="openBlacklistConfirm()">🚫 Blacklist</button>
+        <button type="button" class="btn btn-outline-danger" (click)="openBlacklistConfirm()"><app-icon name="block" [size]="18" /> Blacklist</button>
         } @else {
-          <button type="button" class="btn btn-primary" (click)="openActivateConfirm()"><app-icon name="check_circle" [size]="22" /> Kích hoạt lại</button>
+        <button type="button" class="btn btn-primary" (click)="openActivateConfirm()"><app-icon name="check_circle"
+            [size]="22" /> Kích hoạt lại</button>
         }
         <button type="button" class="btn btn-secondary" (click)="closeDetailsModal()">Đóng</button>
       </div>

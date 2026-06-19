@@ -41,7 +41,7 @@
         <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); display: grid; gap: 16px; margin-bottom: 24px;">
           <app-stat-card icon="payments" label="Doanh thu ròng" [value]="formatCurrency(report.netRevenue)" color="#2563EB"></app-stat-card>
           <app-stat-card icon="circle" [filled]="true" label="Đặt sân hoàn thành" [value]="report.completedBookingCount.toString()" color="#16A34A"></app-stat-card>
-          <app-stat-card icon="🔴" label="Đặt sân đã hủy" [value]="report.cancelledBookingCount.toString()" color="#DC2626"></app-stat-card>
+          <app-stat-card icon="cancel" label="Đặt sân đã hủy" [value]="report.cancelledBookingCount.toString()" color="#DC2626"></app-stat-card>
           <app-stat-card icon="local_cafe" label="Doanh thu dịch vụ" [value]="formatCurrency(report.serviceItemRevenue)" color="#F59E0B"></app-stat-card>
           <app-stat-card icon="sports_tennis" label="Tổng lượt đặt sân" [value]="(report.completedBookingCount + report.cancelledBookingCount).toString()" color="#8B5CF6"></app-stat-card>
         </div>
@@ -183,7 +183,7 @@
         
         <!-- Staff Performance / Productivity Grid Section -->
         <div class="report-card">
-          <h3 style="margin-top: 0; margin-bottom: 12px; font-size: 15px; font-weight: 700;">💼 Bảng xếp hạng năng suất nhân viên</h3>
+          <h3 style="margin-top: 0; margin-bottom: 12px; font-size: 15px; font-weight: 700;"><app-icon name="work" [size]="18" /> Bảng xếp hạng năng suất nhân viên</h3>
           <p style="font-size: 12.5px; color: var(--text-secondary); margin: 0 0 16px 0;">Đánh giá tổng số lượng booking đã tạo và tổng doanh thu do từng nhân viên xử lý thành công.</p>
           
           <div class="table-card" style="border-radius: 10px;">
