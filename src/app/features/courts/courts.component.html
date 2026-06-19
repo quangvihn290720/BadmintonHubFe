@@ -132,7 +132,7 @@
                   name="play_arrow" [size]="18" /> Mở sân</button>
               }
               @if (courtStatus(court) !== 'BAO_TRI_LUOI') {
-              <button type="button" class="btn-icon btn-maintenance" (click)="changeStatus(court, 'BAO_TRI_LUOI')">🔧
+              <button type="button" class="btn-icon btn-maintenance" (click)="changeStatus(court, 'BAO_TRI_LUOI')"><app-icon name="build" [size]="16" />
                 Bảo trì</button>
               }
             </div>
@@ -187,7 +187,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" (click)="showModal.set(false)">Hủy</button>
-          <button type="submit" class="btn btn-primary">💾 Lưu</button>
+          <button type="submit" class="btn btn-primary"><app-icon name="save" [size]="18" /> Lưu</button>
         </div>
       </form>
     </div>
