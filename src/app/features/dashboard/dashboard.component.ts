@@ -320,8 +320,21 @@ export class DashboardComponent implements OnInit {
     this.checkoutPaymentMethod.set(PaymentMethod.Cash);
     this.promotionCode.set('');
     this.appliedDiscount.set(0);
+
+    // Load previously saved services for this booking (if any)
+    const booking = this.activeBooking();
     const dbServices = this.additionalService.getServices();
-    this.serviceItems.set(dbServices.map(s => ({ ...s, quantity: 0 })));
+    const pending = booking ? this.bookingService.loadPendingServices(booking.id) : null;
+
+    if (pending && pending.length > 0) {
+      // Merge: set quantity from pending, default to 0 for services not in pending
+      this.serviceItems.set(dbServices.map(s => {
+        const saved = pending.find(p => p.key === s.key);
+        return { ...s, quantity: saved ? saved.quantity : 0 };
+      }));
+    } else {
+      this.serviceItems.set(dbServices.map(s => ({ ...s, quantity: 0 })));
+    }
   }
 
   applyPromotionCode(): void {
@@ -353,6 +366,24 @@ export class DashboardComponent implements OnInit {
           : item
       )
     );
+    // Auto-save to pending services for the active booking
+    this.saveCurrentServices();
+  }
+
+  /** Persist current service selections for the active booking */
+  private saveCurrentServices(): void {
+    const booking = this.activeBooking();
+    if (!booking) return;
+    const services = this.serviceItems()
+      .filter(item => (item.quantity || 0) > 0)
+      .map(item => ({ key: item.key, name: item.name, price: item.price, quantity: item.quantity || 0 }));
+    this.bookingService.savePendingServices(booking.id, services);
+  }
+
+  /** Called when the service popup is closed via the "Áp dụng" button */
+  onServicePopupClose(): void {
+    this.saveCurrentServices();
+    this.showServicePopup.set(false);
   }
 
   confirmCheckout(): void {
@@ -374,6 +405,7 @@ export class DashboardComponent implements OnInit {
       ).subscribe({
         next: () => {
           this.customerService.addCompletedBooking(booking.customerPhone, booking.customerName, grandTotal);
+          this.bookingService.clearPendingServices(booking.id);
           this.showCheckoutModal.set(false);
           this.showToast('Hoàn tất ca chơi và thanh toán thành công!', 'success');
         },
@@ -591,5 +623,18 @@ export class DashboardComponent implements OnInit {
     const newH = Math.floor(total / 60) % 24;
     const newM = total % 60;
     return `${newH.toString().padStart(2, '0')}:${newM.toString().padStart(2, '0')}`;
+  }
+
+  /** Check if a playing booking has pending services added by staff */
+  hasPendingServices(bookingId: number): boolean {
+    const pending = this.bookingService.loadPendingServices(bookingId);
+    return !!pending && pending.length > 0;
+  }
+
+  /** Get count of pending service items for a booking */
+  getPendingServicesCount(bookingId: number): number {
+    const pending = this.bookingService.loadPendingServices(bookingId);
+    if (!pending) return 0;
+    return pending.reduce((sum, s) => sum + (s.quantity || 0), 0);
   }
 }

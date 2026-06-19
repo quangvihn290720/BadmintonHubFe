@@ -144,9 +144,14 @@
                   <span class="booking-cust-name">{{ booking.customerName }}</span>
                   <span class="booking-cust-time"><app-icon name="schedule" [size]="14" /> {{ booking.startTime }} - {{
                     booking.endTime }}</span>
-                  <span class="booking-cust-phone">📞 {{ booking.customerPhone }}</span>
+                  <span class="booking-cust-phone"><app-icon name="phone" [size]="10" /> {{ booking.customerPhone }}</span>
                   @if (booking.note) {
-                  <span class="booking-cust-note" [title]="booking.note">📝 {{ booking.note }}</span>
+                  <span class="booking-cust-note" [title]="booking.note"><app-icon name="edit_note" [size]="10" /> {{ booking.note }}</span>
+                  }
+                  @if (booking.status === 'playing' && hasPendingServices(booking.id)) {
+                  <span class="booking-services-badge" title="Đã ghi dịch vụ">
+                    <app-icon name="local_cafe" [size]="10" /> {{ getPendingServicesCount(booking.id) }} dịch vụ
+                  </span>
                   }
                 </div>
               </div>
@@ -373,7 +378,7 @@
   <div class="modal-overlay" (click)="showDetailModal.set(false)">
     <div class="modal-card select-modal" (click)="$event.stopPropagation()">
       <div class="modal-header">
-        <h3>📄 Chi tiết lịch sử phiên chơi</h3>
+        <h3><app-icon name="description" [size]="18" /> Chi tiết lịch sử phiên chơi</h3>
         <button class="close-btn" (click)="showDetailModal.set(false)"><app-icon name="close" [size]="20" /></button>
       </div>
       <div class="modal-body">
@@ -450,11 +455,11 @@
 
   <!-- Service Selection Popup Modal -->
   @if (showServicePopup() && activeBooking()) {
-  <div class="modal-overlay" style="z-index: 1100;" (click)="showServicePopup.set(false)">
+  <div class="modal-overlay" style="z-index: 1100;" (click)="onServicePopupClose()">
     <div class="modal-card select-modal" (click)="$event.stopPropagation()" style="max-width: 500px;">
       <div class="modal-header">
         <h3><app-icon name="local_cafe" [size]="22" /> Chọn dịch vụ phụ trợ</h3>
-        <button class="close-btn" (click)="showServicePopup.set(false)"><app-icon name="close" [size]="20" /></button>
+        <button class="close-btn" (click)="onServicePopupClose()"><app-icon name="close" [size]="20" /></button>
       </div>
       <div class="modal-body" style="max-height: 400px; overflow-y: auto;">
         <p style="font-size: 13px; color: #94a3b8; margin-bottom: 16px;">Tăng giảm số lượng dịch vụ phụ trội khách đã
@@ -482,7 +487,7 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-primary" style="width: 100%;" (click)="showServicePopup.set(false)">Áp dụng dịch
+        <button class="btn btn-primary" style="width: 100%;" (click)="onServicePopupClose()">Áp dụng dịch
           vụ</button>
       </div>
     </div>
@@ -551,7 +556,7 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" (click)="showRescheduleModal.set(false)">Hủy</button>
-        <button class="btn btn-primary" (click)="confirmReschedule()">💾 Xác nhận đổi lịch</button>
+        <button class="btn btn-primary" (click)="confirmReschedule()"><app-icon name="save" [size]="18" /> Xác nhận đổi lịch</button>
       </div>
     </div>
   </div>

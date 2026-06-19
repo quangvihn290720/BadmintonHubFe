@@ -8,7 +8,7 @@
 
   <!-- Pricing Source Explanation Box -->
   <div class="pricing-explanation" style="background: rgba(37, 99, 235, 0.06); border: 1.5px solid rgba(37, 99, 235, 0.15); border-radius: 12px; padding: 16px; margin-bottom: 24px; color: var(--text-primary); font-size: 13.5px; line-height: 1.6;">
-    <h4 style="margin: 0 0 6px 0; color: var(--color-primary); display: flex; align-items: center; gap: 6px; font-weight: 700;">💡 Cơ chế tính giá giờ chơi:</h4>
+    <h4 style="margin: 0 0 6px 0; color: var(--color-primary); display: flex; align-items: center; gap: 6px; font-weight: 700;"><app-icon name="lightbulb" [size]="18" /> Cơ chế tính giá giờ chơi:</h4>
     <p style="margin: 0;">
       Hệ thống sử dụng <strong>Cấu hình bảng giá theo giờ (Dynamic Pricing Rules)</strong> dưới đây làm nguồn tính giá chính khi khách đặt sân. Nếu khung giờ khách chơi trùng khớp với một cấu hình bảng giá đang có hiệu lực, đơn giá của cấu hình đó sẽ được áp dụng. Nếu khung giờ đặt sân nằm ngoài mọi cấu hình bảng giá dưới đây, hệ thống sẽ tự động sử dụng <strong>Giá giờ gốc</strong> được cấu hình tại trang <strong>Quản lý sân</strong> (Standard: 100K/giờ, VIP: 180K/giờ) làm giá cơ sở dự phòng.
     </p>
@@ -152,7 +152,7 @@
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" (click)="showModal.set(false)">Hủy</button>
-            <button type="submit" class="btn btn-primary">💾 Lưu thay đổi</button>
+            <button type="submit" class="btn btn-primary"><app-icon name="save" [size]="18" /> Lưu thay đổi</button>
           </div>
         </form>
       </div>

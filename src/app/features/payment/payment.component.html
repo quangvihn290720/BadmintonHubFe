@@ -91,7 +91,7 @@
           <td><strong>{{ formatCurrency(p.remaining) }}</strong></td>
           <td><app-status-badge [status]="p.status" [label]="getStatusLabel(p.status)"></app-status-badge></td>
           <td>{{ p.paymentMethod }}</td>
-          <td><button class="btn-icon btn-detail" (click)="$event.stopPropagation(); openDetails(p.id)">✏️ Chi
+          <td><button class="btn-icon btn-detail" (click)="$event.stopPropagation(); openDetails(p.id)"><app-icon name="edit" [size]="14" /> Chi
               tiết</button></td>
         </tr>
         } @empty {
@@ -125,13 +125,13 @@
   <div class="modal-overlay" (click)="showDetailModal.set(false)">
     <div class="modal-card select-modal" style="max-width: 480px;" (click)="$event.stopPropagation()">
       <div class="modal-header">
-        <h3>📄 Chi tiết thanh toán hóa đơn</h3>
+        <h3><app-icon name="description" [size]="18" /> Chi tiết thanh toán hóa đơn</h3>
         <button class="close-btn" (click)="showDetailModal.set(false)"><app-icon name="close" [size]="20" /></button>
       </div>
       <div class="modal-body">
         <div class="detail-badge" [class.text-success]="booking.status === 'completed'"
           [class.text-warning]="booking.status !== 'completed'">
-          {{ booking.status === 'completed' ? '✓ Đã thanh toán hoàn tất' : '⏱ Chờ thu / Đã đặt cọc' }}
+          {{ booking.status === 'completed' ? 'Đã thanh toán hoàn tất' : 'Chờ thu / Đã đặt cọc' }}
         </div>
 
         <div class="info-sheet" style="margin-top: 8px;">
@@ -157,7 +157,7 @@
         }
 
         <div class="bill-tally-card" style="background: #1e293b; margin-top: 8px;">
-          <h4 class="bill-title" style="color: #cbd5e1; border-bottom: 1px dashed #475569;">🧾 HÓA ĐƠN CHI TIẾT</h4>
+          <h4 class="bill-title" style="color: #cbd5e1; border-bottom: 1px dashed #475569;"><app-icon name="receipt_long" [size]="18" /> HÓA ĐƠN CHI TIẾT</h4>
           <div class="bill-rows">
             <div class="bill-row"><span>Tiền sân gốc:</span><span>{{ formatCurrency(booking.totalAmount) }}</span></div>
 
@@ -240,7 +240,7 @@
       <div class="modal-footer">
         <button class="btn btn-secondary" (click)="showDetailModal.set(false)">Đóng</button>
         @if (booking.status !== 'completed') {
-        <button class="btn btn-success" (click)="confirmCheckout(booking)">💳 Hoàn tất thanh toán</button>
+        <button class="btn btn-success" (click)="confirmCheckout(booking)"><app-icon name="credit_card" [size]="18" /> Hoàn tất thanh toán</button>
         }
       </div>
     </div>
